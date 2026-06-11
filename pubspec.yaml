@@ -1,0 +1,84 @@
+name: dermiq
+description: "DermIQ - Smart Skincare, Just For You"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Firebase
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.4
+  cloud_firestore: ^5.5.1
+  firebase_storage: ^12.3.7
+  firebase_messaging: ^15.1.6
+  firebase_analytics: ^11.3.6
+  firebase_crashlytics: ^4.1.6
+  google_sign_in: ^6.2.2
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Navigation
+  go_router: ^14.6.3
+
+  # UI / Design
+  fl_chart: ^0.70.2
+  shimmer: ^3.0.0
+  google_fonts: ^6.2.1
+
+  # Motion
+  flutter_animate: ^4.5.0
+  lottie: ^3.3.1
+
+  # Camera / Image
+  image_picker: ^1.1.2
+
+  # Smart Scanner
+  mobile_scanner: ^6.0.2          # barcode/QR via live camera
+  google_mlkit_text_recognition: ^0.13.1  # on-device OCR
+  permission_handler: ^11.3.1     # camera permission control
+
+  # Utils
+  shared_preferences: ^2.3.5
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # Store assets — run the generators once a source PNG is in assets/images/:
+  #   dart run flutter_launcher_icons
+  #   dart run flutter_native_splash:create
+  flutter_launcher_icons: ^0.14.2
+  flutter_native_splash: ^2.4.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/lottie/
+
+# ── Store launcher icon (provide a 1024×1024 PNG at the image_path) ───────────
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/app_icon.png"
+  adaptive_icon_background: "#7C5CFF"
+  adaptive_icon_foreground: "assets/images/app_icon_foreground.png"
+  min_sdk_android: 23
+
+# ── Native splash (matches the brand background) ─────────────────────────────
+flutter_native_splash:
+  color: "#F8F6FF"
+  image: "assets/images/splash_logo.png"
+  android_12:
+    color: "#F8F6FF"
+    image: "assets/images/splash_logo.png"
