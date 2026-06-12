@@ -40,7 +40,9 @@ abstract final class AppRoutes {
   static const home = '/home';
   static const routine = '/routine';
   static const analyze = '/analyze';
-  static const shelf = '/shelf';
+  // The Shop (e-commerce) tab. Path kept as '/shelf' for back-compat with the
+  // many existing links; the personal shelf tracker lives at [myShelf].
+  static const shop = '/shelf';
   static const profile = '/profile';
 
   // ── Top-level ───────────────────────────────────────────────────────────────
@@ -160,7 +162,7 @@ abstract final class RouteNames {
   static const home = 'home';
   static const routine = 'routine';
   static const analyze = 'analyze';
-  static const shelf = 'shelf';
+  static const shop = 'shop';
   static const profile = 'profile';
 
   static const notifications = 'notifications';

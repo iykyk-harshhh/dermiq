@@ -61,7 +61,7 @@ void main() {
 
     test('returning user goes straight to the app', () {
       expect(r(loggedIn: true, seen: true, at: AppRoutes.home), isNull);
-      expect(r(loggedIn: true, seen: true, at: AppRoutes.shelf), isNull);
+      expect(r(loggedIn: true, seen: true, at: AppRoutes.shop), isNull);
     });
   });
 

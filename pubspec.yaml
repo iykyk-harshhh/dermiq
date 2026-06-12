@@ -57,6 +57,7 @@ dev_dependencies:
   #   dart run flutter_native_splash:create
   flutter_launcher_icons: ^0.14.2
   flutter_native_splash: ^2.4.3
+  video_player: ^2.9.1
 
 flutter:
   uses-material-design: true
@@ -64,6 +65,7 @@ flutter:
     - assets/images/
     - assets/animations/
     - assets/lottie/
+    - assets/videos/splash.mp4
 
 # ── Store launcher icon (provide a 1024×1024 PNG at the image_path) ───────────
 flutter_launcher_icons:

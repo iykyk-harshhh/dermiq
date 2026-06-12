@@ -272,10 +272,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (_, _) => const ScanScreen(),
             ),
           ]),
-          // 3 — Shop (e-commerce)
+          // 3 — Shop (e-commerce). Path is '/shelf' (back-compat); the personal
+          // shelf tracker is ShelfScreen at '/my-shelf'.
           StatefulShellBranch(routes: [
             GoRoute(
-              path: AppRoutes.shelf, name: RouteNames.shelf,
+              path: AppRoutes.shop, name: RouteNames.shop,
               builder: (_, _) => const ShopScreen(),
             ),
           ]),

@@ -98,6 +98,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     return list;
   }
 
+  /// True when the user is actively searching or filtering — switches the
+  /// results from the browsing grid to the infinite card slider.
+  bool get _isFiltering =>
+      _query.trim().isNotEmpty ||
+      _selectedBrands.isNotEmpty ||
+      _minPrice > 0 ||
+      _maxPrice < 5000 ||
+      _minRating > 0;
+
   void _addToCart(ShopProduct product) {
     ref.read(cartProvider.notifier).addItem(product);
     if (!mounted) return;
@@ -211,23 +220,33 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
             ),
           ),
 
-          // ── Product Grid ──────────────────────────────────────────────────
+          // ── Results: infinite card slider when searching/filtering,
+          //    otherwise the normal browsing grid. ─────────────────────────────
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _ProductGrid(
-                  products: skincareList,
-                  onTap: (p) => context.push('/shop/product/${p.id}', extra: p),
-                  onAddToCart: _addToCart,
-                ),
-                _ProductGrid(
-                  products: haircareList,
-                  onTap: (p) => context.push('/shop/product/${p.id}', extra: p),
-                  onAddToCart: _addToCart,
-                ),
-              ],
-            ),
+            child: _isFiltering
+                ? _SearchResultsSlider(
+                    products: _activeTab == 0 ? skincareList : haircareList,
+                    onTap: (p) =>
+                        context.push('/shop/product/${p.id}', extra: p),
+                    onAddToCart: _addToCart,
+                  )
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _ProductGrid(
+                        products: skincareList,
+                        onTap: (p) =>
+                            context.push('/shop/product/${p.id}', extra: p),
+                        onAddToCart: _addToCart,
+                      ),
+                      _ProductGrid(
+                        products: haircareList,
+                        onTap: (p) =>
+                            context.push('/shop/product/${p.id}', extra: p),
+                        onAddToCart: _addToCart,
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -1038,6 +1057,166 @@ class _RatingChip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SearchResultsSlider — GSAP-style infinite coverflow carousel.
+//
+// Shown only while searching/filtering. Cards loop endlessly; the centred card
+// is full size while neighbours scale down, rotate in 3-D and fade — the look
+// of a GSAP infinite card slider. Reuses the existing _ShopProductCard so the
+// card design is unchanged.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SearchResultsSlider extends StatefulWidget {
+  const _SearchResultsSlider({
+    required this.products,
+    required this.onTap,
+    required this.onAddToCart,
+  });
+
+  final List<ShopProduct> products;
+  final ValueChanged<ShopProduct> onTap;
+  final ValueChanged<ShopProduct> onAddToCart;
+
+  @override
+  State<_SearchResultsSlider> createState() => _SearchResultsSliderState();
+}
+
+class _SearchResultsSliderState extends State<_SearchResultsSlider> {
+  // A large virtual range so the carousel can scroll "forever" in both
+  // directions; the real product is index % products.length.
+  static const _virtual = 100000;
+
+  PageController? _controller;
+  double _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _build();
+  }
+
+  void _build() {
+    final n = widget.products.length;
+    if (n == 0) return;
+    final initial = _virtual - (_virtual % n);
+    _page = initial.toDouble();
+    _controller = PageController(viewportFraction: 0.68, initialPage: initial)
+      ..addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final p = _controller?.page;
+    if (p != null && mounted) setState(() => _page = p);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SearchResultsSlider old) {
+    super.didUpdateWidget(old);
+    // Recentre when the filtered set changes (new search term / filter).
+    final changed = old.products.length != widget.products.length ||
+        (old.products.isNotEmpty &&
+            widget.products.isNotEmpty &&
+            old.products.first.id != widget.products.first.id);
+    if (changed) {
+      _controller?.removeListener(_onScroll);
+      _controller?.dispose();
+      _controller = null;
+      _build();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onScroll);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final products = widget.products;
+    if (products.isEmpty || _controller == null) return const _EmptyResults();
+
+    return Column(
+      children: [
+        const SizedBox(height: AppConstants.sp12),
+        Text(
+          '${products.length} result${products.length == 1 ? '' : 's'}'
+          '  ·  swipe to explore',
+          style: AppTypography.caption
+              .copyWith(color: context.dColors.textSecondary),
+        ),
+        Expanded(
+          child: PageView.builder(
+            controller: _controller,
+            physics: const BouncingScrollPhysics(),
+            itemBuilder: (context, index) {
+              final product = products[index % products.length];
+              final delta = index - _page;
+              final absDelta = delta.abs();
+
+              final scale = (1 - absDelta * 0.20).clamp(0.74, 1.0).toDouble();
+              final rotation = (-delta * 0.30).clamp(-0.6, 0.6).toDouble();
+              final opacity = (1 - absDelta * 0.42).clamp(0.28, 1.0).toDouble();
+              final lift = absDelta * 16.0;
+
+              return Center(
+                child: Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0014) // perspective
+                    ..translateByDouble(0.0, lift, 0.0, 1.0)
+                    ..rotateY(rotation)
+                    ..scaleByDouble(scale, scale, scale, 1.0),
+                  child: Opacity(
+                    opacity: opacity,
+                    child: SizedBox(
+                      width: 232,
+                      height: 404,
+                      child: _ShopProductCard(
+                        product: product,
+                        onTap: () => widget.onTap(product),
+                        onAddToCart: () => widget.onAddToCart(product),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: AppConstants.sp24),
+      ],
+    );
+  }
+}
+
+class _EmptyResults extends StatelessWidget {
+  const _EmptyResults();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_rounded,
+              size: 48, color: context.dColors.textTertiary),
+          const SizedBox(height: AppConstants.sp12),
+          Text(
+            'No products found',
+            style: AppTypography.labelMedium
+                .copyWith(color: context.dColors.textSecondary),
+          ),
+          const SizedBox(height: AppConstants.sp4),
+          Text('Try a different search or filter',
+              style: AppTypography.caption),
+        ],
       ),
     );
   }
