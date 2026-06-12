@@ -14,6 +14,7 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   late final Set<String> _readIds;
+  final Set<String> _deletedIds = {};
 
   static const _all = [
     // ── Today (start unread) ──────────────────────────────────────────────
@@ -128,15 +129,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   bool _isRead(String id) => _readIds.contains(id);
-  int get _unreadCount => _all.where((n) => !_isRead(n.id)).length;
+  bool _isDeleted(String id) => _deletedIds.contains(id);
+  int get _unreadCount =>
+      _all.where((n) => !_isRead(n.id) && !_isDeleted(n.id)).length;
 
   void _markRead(String id) {
     if (!_isRead(id)) setState(() => _readIds.add(id));
   }
 
   void _markAllRead() {
-    setState(() => _readIds.addAll(_all.map((n) => n.id)));
+    setState(() => _readIds.addAll(
+        _all.where((n) => !_isDeleted(n.id)).map((n) => n.id)));
   }
+
+  void _delete(String id) => setState(() => _deletedIds.add(id));
 
   /// Tapping a notification marks it read and opens its destination.
   void _open(_Notif n) {
@@ -144,7 +150,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (n.actionRoute != null) context.push(n.actionRoute!);
   }
 
-  List<_Notif> _group(_Group g) => _all.where((n) => n.group == g).toList();
+  List<_Notif> _group(_Group g) =>
+      _all.where((n) => n.group == g && !_isDeleted(n.id)).toList();
+
+  /// A swipe-to-delete notification card.
+  Widget _notifCard(_Notif n, int delayMs) {
+    return Dismissible(
+      key: ValueKey(n.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => _delete(n.id),
+      background: Container(
+        alignment: Alignment.centerRight,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+      ),
+      child: _NotifCard(
+        notif: n,
+        isRead: _isRead(n.id),
+        onTap: () => _open(n),
+        onActionTap:
+            n.actionRoute != null ? () => context.push(n.actionRoute!) : null,
+      )
+          .animate()
+          .fadeIn(duration: 360.ms, delay: Duration(milliseconds: delayMs))
+          .slideY(
+            begin: 0.08,
+            duration: 360.ms,
+            delay: Duration(milliseconds: delayMs),
+            curve: Curves.easeOutCubic,
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -211,26 +252,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       count: _group(_Group.today).length,
                     ),
                     const SizedBox(height: 10),
-                    ..._group(_Group.today).asMap().entries.map((e) =>
-                        _NotifCard(
-                          notif: e.value,
-                          isRead: _isRead(e.value.id),
-                          onTap: () => _open(e.value),
-                          onActionTap: e.value.actionRoute != null
-                              ? () => context.push(e.value.actionRoute!)
-                              : null,
-                        )
-                            .animate()
-                            .fadeIn(
-                              duration: 360.ms,
-                              delay: Duration(milliseconds: 50 * e.key),
-                            )
-                            .slideY(
-                              begin: 0.08,
-                              duration: 360.ms,
-                              delay: Duration(milliseconds: 50 * e.key),
-                              curve: Curves.easeOutCubic,
-                            )),
+                    ..._group(_Group.today)
+                        .asMap()
+                        .entries
+                        .map((e) => _notifCard(e.value, 50 * e.key)),
                     const SizedBox(height: 16),
                   ],
 
@@ -240,26 +265,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       count: _group(_Group.yesterday).length,
                     ),
                     const SizedBox(height: 10),
-                    ..._group(_Group.yesterday).asMap().entries.map((e) =>
-                        _NotifCard(
-                          notif: e.value,
-                          isRead: _isRead(e.value.id),
-                          onTap: () => _open(e.value),
-                          onActionTap: e.value.actionRoute != null
-                              ? () => context.push(e.value.actionRoute!)
-                              : null,
-                        )
-                            .animate()
-                            .fadeIn(
-                              duration: 360.ms,
-                              delay: Duration(milliseconds: 50 * e.key + 100),
-                            )
-                            .slideY(
-                              begin: 0.08,
-                              duration: 360.ms,
-                              delay: Duration(milliseconds: 50 * e.key + 100),
-                              curve: Curves.easeOutCubic,
-                            )),
+                    ..._group(_Group.yesterday)
+                        .asMap()
+                        .entries
+                        .map((e) => _notifCard(e.value, 50 * e.key + 100)),
                     const SizedBox(height: 16),
                   ],
 
@@ -269,26 +278,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       count: _group(_Group.earlier).length,
                     ),
                     const SizedBox(height: 10),
-                    ..._group(_Group.earlier).asMap().entries.map((e) =>
-                        _NotifCard(
-                          notif: e.value,
-                          isRead: _isRead(e.value.id),
-                          onTap: () => _open(e.value),
-                          onActionTap: e.value.actionRoute != null
-                              ? () => context.push(e.value.actionRoute!)
-                              : null,
-                        )
-                            .animate()
-                            .fadeIn(
-                              duration: 360.ms,
-                              delay: Duration(milliseconds: 50 * e.key + 200),
-                            )
-                            .slideY(
-                              begin: 0.08,
-                              duration: 360.ms,
-                              delay: Duration(milliseconds: 50 * e.key + 200),
-                              curve: Curves.easeOutCubic,
-                            )),
+                    ..._group(_Group.earlier)
+                        .asMap()
+                        .entries
+                        .map((e) => _notifCard(e.value, 50 * e.key + 200)),
                   ],
 
                   const SizedBox(height: 80),

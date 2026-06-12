@@ -1,22 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../shelf/data/shelf_models.dart';
+import '../../../shelf/providers/shelf_provider.dart';
+
+// The analyzed product (currently the mock OCR result the screen displays).
+const _kName = 'CeraVe Foaming Facial Cleanser';
+const _kBrand = 'CeraVe';
+const _kCategory = 'Cleanser';
+const _kSafetyScore = 92;
+const _kSkinMatch = 88;
+const _kHairMatch = 75;
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
-class ProductAnalysisScreen extends StatefulWidget {
+class ProductAnalysisScreen extends ConsumerStatefulWidget {
   final String productId;
   const ProductAnalysisScreen({super.key, required this.productId});
 
   @override
-  State<ProductAnalysisScreen> createState() => _ProductAnalysisScreenState();
+  ConsumerState<ProductAnalysisScreen> createState() => _ProductAnalysisScreenState();
 }
 
-class _ProductAnalysisScreenState extends State<ProductAnalysisScreen>
+class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _enterCtrl;
   late final Animation<double>   _enterAnim;
@@ -37,6 +48,34 @@ class _ProductAnalysisScreenState extends State<ProductAnalysisScreen>
   void dispose() {
     _enterCtrl.dispose();
     super.dispose();
+  }
+
+  /// Save Product → Add To Shelf (Scanner is a shelf source, per spec).
+  void _addToShelf() {
+    final now = DateTime.now();
+    ref.read(shelfProvider.notifier).addProduct(ShelfProduct(
+          id: 'scan_${widget.productId}_${now.millisecondsSinceEpoch}',
+          name: _kName,
+          brand: _kBrand,
+          category: _kCategory,
+          score: _kSafetyScore,
+          color: AppColors.primary,
+          purchaseDate: now,
+          expiryDate: now.add(const Duration(days: 365)),
+          notes: 'Added from scan analysis',
+          skinMatch: _kSkinMatch,
+          hairMatch: _kHairMatch,
+        ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$_kName added to My Shelf',
+            style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+    context.push('/my-shelf');
   }
 
   @override
@@ -154,7 +193,7 @@ class _ProductAnalysisScreenState extends State<ProductAnalysisScreen>
                 // 8 · Actions
                 AppButton(
                   label:     'Add to My Shelf',
-                  onPressed: () => context.pop(),
+                  onPressed: _addToShelf,
                   icon:      const Icon(Icons.add_rounded,
                       color: Colors.white, size: 18),
                 ).animate()
@@ -384,6 +423,52 @@ class _SafetyOverviewCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 10),
+          const _RecommendationChip(score: _kSafetyScore),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Recommendation status (derived from the overall score) ───────────────────
+
+({String label, Color color, IconData icon}) recommendationFor(int score) {
+  if (score >= 85) {
+    return (label: 'Highly Recommended', color: const Color(0xFF16A34A), icon: Icons.verified_rounded);
+  }
+  if (score >= 70) {
+    return (label: 'Recommended', color: const Color(0xFF22C55E), icon: Icons.thumb_up_rounded);
+  }
+  if (score >= 50) {
+    return (label: 'Neutral', color: const Color(0xFFF59E0B), icon: Icons.remove_circle_outline_rounded);
+  }
+  return (label: 'Not Recommended', color: AppColors.error, icon: Icons.do_not_disturb_on_rounded);
+}
+
+class _RecommendationChip extends StatelessWidget {
+  final int score;
+  const _RecommendationChip({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    final r = recommendationFor(score);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      decoration: BoxDecoration(
+        color: r.color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: r.color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(r.icon, size: 16, color: r.color),
+          const SizedBox(width: 8),
+          Text(r.label,
+              style: AppTypography.labelMedium
+                  .copyWith(color: r.color, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -484,6 +569,8 @@ class _CompatibilityCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text('Your Compatibility', style: AppTypography.labelLarge),
+              const Spacer(),
+              const _CompatVerdictChip(scores: [_kSkinMatch, _kHairMatch, 96]),
             ],
           ),
           const SizedBox(height: 18),
@@ -534,6 +621,36 @@ class _CompatibilityCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Compatibility verdict (Compatible / Partially / Not Compatible) ──────────
+
+class _CompatVerdictChip extends StatelessWidget {
+  final List<int> scores; // skin, hair, allergy
+  const _CompatVerdictChip({required this.scores});
+
+  ({String label, Color color}) get _verdict {
+    final avg = scores.reduce((a, b) => a + b) / scores.length;
+    if (avg >= 75) return (label: 'Compatible', color: const Color(0xFF22C55E));
+    if (avg >= 50) return (label: 'Partially', color: const Color(0xFFF59E0B));
+    return (label: 'Not Compatible', color: AppColors.error);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _verdict;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: v.color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: v.color.withValues(alpha: 0.28)),
+      ),
+      child: Text(v.label,
+          style: AppTypography.caption
+              .copyWith(color: v.color, fontWeight: FontWeight.w700, fontSize: 10.5)),
     );
   }
 }

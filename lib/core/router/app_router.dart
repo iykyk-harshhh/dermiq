@@ -11,7 +11,6 @@ import '../../features/auth/presentation/screens/profile_setup_screen.dart';
 
 // Auth
 import '../../features/auth/presentation/screens/splash_screen.dart';
-import '../../features/auth/presentation/screens/welcome_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
@@ -85,9 +84,11 @@ import '../../features/specialist/presentation/screens/appointment_booking_scree
 import '../../features/specialist/presentation/screens/appointment_confirmation_screen.dart';
 import '../../features/specialist/presentation/screens/appointment_detail_screen.dart';
 import '../../features/specialist/presentation/screens/my_appointments_screen.dart';
+import '../../features/specialist/presentation/screens/saved_specialists_screen.dart';
 
 // Profile
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/profile/presentation/screens/edit_skin_profile_screen.dart';
 import '../../features/profile/presentation/screens/edit_hair_profile_screen.dart';
 import '../../features/profile/presentation/screens/user_preferences_screen.dart';
@@ -184,10 +185,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.onboarding, name: RouteNames.onboarding,
         builder: (_, _) => const OnboardingScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.welcome, name: RouteNames.welcome,
-        builder: (_, _) => const WelcomeScreen(),
       ),
       GoRoute(
         path: AppRoutes.login, name: RouteNames.login,
@@ -394,6 +391,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const MyAppointmentsScreen(),
       ),
       GoRoute(
+        path: AppRoutes.savedSpecialists, name: RouteNames.savedSpecialists,
+        builder: (_, _) => const SavedSpecialistsScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.appointmentDetailPattern, name: RouteNames.appointmentDetail,
         builder: (_, state) {
           final appt = state.extra is Appointment
@@ -467,6 +468,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // ── Profile sub-screens ─────────────────────────────────────────────────
+      GoRoute(
+        path: AppRoutes.profileEdit, name: RouteNames.profileEdit,
+        builder: (_, _) => const EditProfileScreen(),
+      ),
       GoRoute(
         path: AppRoutes.profileEditSkin, name: RouteNames.profileEditSkin,
         builder: (_, _) => const EditSkinProfileScreen(),

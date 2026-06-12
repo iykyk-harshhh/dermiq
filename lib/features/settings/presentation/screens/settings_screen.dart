@@ -90,6 +90,10 @@ class SettingsScreen extends ConsumerWidget {
           // ── Account ──────────────────────────────────────────────────────
           AppSectionCard(title: 'Account', children: [
             AppSettingsTile(
+              icon: Icons.manage_accounts_rounded, iconColor: AppColors.primary,
+              label: 'Edit Profile', onTap: () => context.push('/profile/edit'),
+            ),
+            AppSettingsTile(
               icon: Icons.face_retouching_natural_rounded, iconColor: AppColors.primary,
               label: 'Skin Profile', onTap: () => context.push('/profile/edit-skin'),
             ),

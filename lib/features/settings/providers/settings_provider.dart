@@ -10,6 +10,8 @@ class SettingsState {
   final bool skinScoreUpdates;
   final bool productExpiryAlerts;
   final bool specialistReminders;
+  final bool rewardAlerts;
+  final bool orderUpdates;
   final bool promotions;
   final bool quietHours;
 
@@ -42,6 +44,8 @@ class SettingsState {
     this.skinScoreUpdates = true,
     this.productExpiryAlerts = true,
     this.specialistReminders = false,
+    this.rewardAlerts = true,
+    this.orderUpdates = true,
     this.promotions = false,
     this.quietHours = true,
     this.analytics = true,
@@ -67,6 +71,8 @@ class SettingsState {
     bool? skinScoreUpdates,
     bool? productExpiryAlerts,
     bool? specialistReminders,
+    bool? rewardAlerts,
+    bool? orderUpdates,
     bool? promotions,
     bool? quietHours,
     bool? analytics,
@@ -91,6 +97,8 @@ class SettingsState {
       skinScoreUpdates: skinScoreUpdates ?? this.skinScoreUpdates,
       productExpiryAlerts: productExpiryAlerts ?? this.productExpiryAlerts,
       specialistReminders: specialistReminders ?? this.specialistReminders,
+      rewardAlerts: rewardAlerts ?? this.rewardAlerts,
+      orderUpdates: orderUpdates ?? this.orderUpdates,
       promotions: promotions ?? this.promotions,
       quietHours: quietHours ?? this.quietHours,
       analytics: analytics ?? this.analytics,

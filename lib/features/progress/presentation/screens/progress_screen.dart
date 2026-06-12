@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
@@ -130,7 +131,7 @@ class _ProgressScreenState extends State<ProgressScreen>
 
                   // View Full Progress button
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () => context.push('/calendar/monthly'),
                     child: Container(
                       width: double.infinity,
                       height: 52,

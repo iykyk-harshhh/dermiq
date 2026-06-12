@@ -57,16 +57,16 @@ const rewardOptions = <RewardOption>[
 // Milestone definitions
 // ─────────────────────────────────────────────────────────────────────────────
 
-const rewardMilestones = <int>[7, 30, 50, 100, 150, 200, 365];
+const rewardMilestones = <int>[50, 100, 150, 200, 250, 300, 365];
 
 String milestoneName(int days) {
   switch (days) {
-    case 7:   return 'One Week Warrior';
-    case 30:  return 'Monthly Master';
     case 50:  return 'Fifty Day Force';
     case 100: return 'Century Champion';
     case 150: return 'Glow Legend';
     case 200: return 'Skin Immortal';
+    case 250: return 'Radiance Royalty';
+    case 300: return 'Triple Century';
     case 365: return 'Year of Radiance';
     default:  return '$days Day Streak';
   }
@@ -139,7 +139,8 @@ class RewardGift {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class StreakState {
-  final int current;
+  final int current; // streak days — any activity (green OR yellow) continues it
+  final int greenDays; // full-completion days — the ONLY days that count toward rewards
   final int best;
   final List<int> claimedMilestones;
   final List<RewardGift> rewards;
@@ -149,6 +150,7 @@ class StreakState {
 
   const StreakState({
     required this.current,
+    this.greenDays = 0,
     required this.best,
     required this.claimedMilestones,
     required this.rewards,
@@ -157,6 +159,7 @@ class StreakState {
 
   StreakState copyWith({
     int? current,
+    int? greenDays,
     int? best,
     List<int>? claimedMilestones,
     List<RewardGift>? rewards,
@@ -165,22 +168,24 @@ class StreakState {
   }) =>
       StreakState(
         current: current ?? this.current,
+        greenDays: greenDays ?? this.greenDays,
         best: best ?? this.best,
         claimedMilestones: claimedMilestones ?? this.claimedMilestones,
         rewards: rewards ?? this.rewards,
         pendingMilestone: clearPending ? null : (pendingMilestone ?? this.pendingMilestone),
       );
 
+  // Reward progress is measured in GREEN days (per spec — yellow doesn't count).
   int get nextMilestone =>
-      rewardMilestones.firstWhere((m) => m > current, orElse: () => current + 50);
+      rewardMilestones.firstWhere((m) => m > greenDays, orElse: () => greenDays + 50);
 
   int get prevMilestone {
-    final passed = rewardMilestones.where((m) => m <= current).toList();
+    final passed = rewardMilestones.where((m) => m <= greenDays).toList();
     return passed.isEmpty ? 0 : passed.last;
   }
 
   double get progressToNext {
     final span = (nextMilestone - prevMilestone).clamp(1, 9999);
-    return ((current - prevMilestone) / span).clamp(0.0, 1.0);
+    return ((greenDays - prevMilestone) / span).clamp(0.0, 1.0);
   }
 }

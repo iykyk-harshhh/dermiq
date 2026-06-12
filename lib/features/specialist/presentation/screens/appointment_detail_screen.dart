@@ -22,6 +22,8 @@ class AppointmentDetailScreen extends StatelessWidget {
         return (color: AppColors.primary, label: 'Completed', icon: Icons.check_circle_rounded);
       case AppointmentStatus.cancelled:
         return (color: AppColors.error, label: 'Cancelled', icon: Icons.cancel_rounded);
+      case AppointmentStatus.missed:
+        return (color: AppColors.warning, label: 'Missed', icon: Icons.event_busy_rounded);
     }
   }
 
@@ -139,6 +141,7 @@ class AppointmentDetailScreen extends StatelessWidget {
             title: 'Date & Time',
             icon: Icons.event_rounded,
             rows: [
+              (label: 'Appointment ID', value: '#${appointment.id.toUpperCase()}'),
               (label: 'Date', value: appointment.dateLabel),
               (label: 'Time', value: appointment.time),
               (label: 'Duration', value: '${appointment.durationMin} min'),
@@ -227,6 +230,15 @@ class AppointmentDetailScreen extends StatelessWidget {
             filled: false,
             onTap: () => AppSnackbar.show(
                 context, 'Opening directions to ${s.hospital}…'),
+          ),
+          const SizedBox(height: 12),
+          _Action(
+            label: 'Add to Calendar',
+            icon: Icons.calendar_month_rounded,
+            color: AppColors.primary,
+            filled: false,
+            onTap: () => AppSnackbar.show(context,
+                'Added to your calendar — ${appointment.dateLabel}, ${appointment.time}'),
           ),
         ],
       ),

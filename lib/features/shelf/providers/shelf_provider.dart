@@ -119,6 +119,17 @@ class ShelfNotifier extends Notifier<ShelfState> {
     }
   }
 
+  /// Mark a product as used-up (or restock it).
+  void setEmpty(String id, bool empty) {
+    state = state.copyWith(products: [
+      for (final p in state.products)
+        if (p.id == id) p.copyWith(isEmpty: empty) else p,
+    ]);
+    final uid = _uid;
+    final updated = byId(id);
+    if (uid != null && updated != null) _repo.addToShelf(uid, updated);
+  }
+
   void addProduct(ShelfProduct product) {
     state = state.copyWith(products: [product, ...state.products]);
     final uid = _uid;

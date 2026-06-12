@@ -112,12 +112,24 @@ class NotificationSettingsScreen extends ConsumerWidget {
 
                   const SizedBox(height: 16),
 
-                  AppSectionCard(title: 'Other', children: [
+                  AppSectionCard(title: 'Activity', children: [
                     AppToggleTile(
                       icon: Icons.medical_services_rounded, color: const Color(0xFF8B5CF6),
-                      label: 'Specialist Reminders', subtitle: 'Appointment alerts',
+                      label: 'Appointment Alerts', subtitle: 'Booking & reminder notices',
                       value: s.specialistReminders,
                       onChanged: (v) => n.edit((x) => x.copyWith(specialistReminders: v)),
+                    ),
+                    AppToggleTile(
+                      icon: Icons.card_giftcard_rounded, color: const Color(0xFFEF4444),
+                      label: 'Reward Alerts', subtitle: 'Streak milestones & gifts',
+                      value: s.rewardAlerts,
+                      onChanged: (v) => n.edit((x) => x.copyWith(rewardAlerts: v)),
+                    ),
+                    AppToggleTile(
+                      icon: Icons.local_shipping_rounded, color: const Color(0xFF0EA5E9),
+                      label: 'Order Updates', subtitle: 'Shipping & delivery status',
+                      value: s.orderUpdates,
+                      onChanged: (v) => n.edit((x) => x.copyWith(orderUpdates: v)),
                     ),
                     AppToggleTile(
                       icon: Icons.local_offer_rounded, color: const Color(0xFFF59E0B),

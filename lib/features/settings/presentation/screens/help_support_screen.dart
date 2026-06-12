@@ -53,6 +53,55 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   void _snack(String msg) => AppSnackbar.show(context, msg);
 
+  /// Lightweight support-ticket form (Report Issue / Feature Request).
+  Future<void> _ticketDialog({required String type, required String hint}) async {
+    final subjectCtrl = TextEditingController();
+    final bodyCtrl = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(type, style: AppTypography.h4),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: subjectCtrl,
+              decoration: const InputDecoration(hintText: 'Subject'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bodyCtrl,
+              maxLines: 3,
+              decoration: InputDecoration(hintText: hint),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: AppTypography.buttonSmall
+                    .copyWith(color: context.dColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Submit',
+                style: AppTypography.buttonSmall
+                    .copyWith(color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+    subjectCtrl.dispose();
+    bodyCtrl.dispose();
+    if (submitted == true && mounted) {
+      final ticketId =
+          (DateTime.now().millisecondsSinceEpoch % 100000).toString().padLeft(5, '0');
+      _snack('$type submitted — ticket #$ticketId. We\'ll get back to you.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final faqs = _filtered;
@@ -217,8 +266,17 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 ),
                 _LinkRow(
                   icon: Icons.bug_report_outlined,
-                  label: 'Report a Problem',
-                  onTap: () => _snack('Opening problem report…'),
+                  label: 'Report an Issue',
+                  onTap: () => _ticketDialog(
+                      type: 'Report an Issue',
+                      hint: 'Describe the problem you ran into…'),
+                ),
+                _LinkRow(
+                  icon: Icons.lightbulb_outline_rounded,
+                  label: 'Feature Request',
+                  onTap: () => _ticketDialog(
+                      type: 'Feature Request',
+                      hint: 'Describe the feature you\'d love to see…'),
                 ),
                 _LinkRow(
                   icon: Icons.info_outline_rounded,

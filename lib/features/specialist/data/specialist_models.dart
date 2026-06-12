@@ -182,7 +182,7 @@ class BookingDraft {
 
 // ── Appointment (My Appointments) ─────────────────────────────────────────────
 
-enum AppointmentStatus { upcoming, completed, cancelled }
+enum AppointmentStatus { upcoming, completed, cancelled, missed }
 
 class Appointment {
   final String id;

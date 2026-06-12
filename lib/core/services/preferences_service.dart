@@ -8,6 +8,8 @@ class PreferencesService {
 
   static const _kOnboarding = 'onboarding_seen';
   static const _kProfileComplete = 'profile_complete';
+  static const _kHealthScore = 'health_score';
+  static const _kSavedSpecialists = 'saved_specialists';
 
   static SharedPreferences? _prefs;
 
@@ -22,6 +24,17 @@ class PreferencesService {
   static bool get profileComplete => _prefs?.getBool(_kProfileComplete) ?? false;
   static Future<void> setProfileComplete(bool v) async =>
       _prefs?.setBool(_kProfileComplete, v);
+
+  /// Last computed DermIQ Health Score (0–100), cached for instant startup.
+  static int get healthScore => _prefs?.getInt(_kHealthScore) ?? 0;
+  static Future<void> setHealthScore(int v) async =>
+      _prefs?.setInt(_kHealthScore, v);
+
+  /// IDs of specialists the user has saved/bookmarked.
+  static List<String> get savedSpecialists =>
+      _prefs?.getStringList(_kSavedSpecialists) ?? const [];
+  static Future<void> setSavedSpecialists(List<String> ids) async =>
+      _prefs?.setStringList(_kSavedSpecialists, ids);
 
   /// Clears per-session state on logout (keeps onboardingSeen so onboarding
   /// never reappears for a returning user — per the flow spec).

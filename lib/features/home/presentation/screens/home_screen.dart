@@ -10,6 +10,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../shop/providers/cart_provider.dart';
+import '../../providers/health_score_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -23,8 +24,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late final AnimationController _scoreCtrl;
   late final Animation<double> _scoreAnim;
 
-  static const _score = 82;
-
   @override
   void initState() {
     super.initState();
@@ -32,7 +31,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..forward();
-    _scoreAnim = Tween<double>(begin: 0, end: _score / 100.0).animate(
+    // 0 → 1 reveal; the actual score (from healthScoreProvider) scales it.
+    _scoreAnim = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _scoreCtrl, curve: Curves.easeOutCubic),
     );
   }
@@ -45,10 +45,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   String get _greeting {
     final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    if (h < 21) return 'Good evening';
-    return 'Good night';
+    if (h >= 5 && h < 12) return 'Good Morning';   // 05:00–11:59
+    if (h >= 12 && h < 17) return 'Good Afternoon'; // 12:00–16:59
+    if (h >= 17 && h < 21) return 'Good Evening';   // 17:00–20:59
+    return 'Good Night';                            // 21:00–04:59
   }
 
   static String _scoreLevel(int s) {
@@ -63,6 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider);
     final firstName = user?.displayName?.split(' ').first ?? 'Sarah';
+    final healthScore = ref.watch(healthScoreProvider);
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -128,9 +129,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 AnimatedBuilder(
                   animation: _scoreAnim,
                   builder: (_, _) {
-                    final currentScore = (_score * _scoreAnim.value).round();
+                    final t = _scoreAnim.value;
+                    final currentScore = (healthScore * t).round();
                     return _HealthScoreHeroCard(
-                      progress: _scoreAnim.value,
+                      progress: t * healthScore / 100,
                       score: currentScore,
                       level: _scoreLevel(currentScore),
                       onViewAnalysis: () => context.push('/analysis'),

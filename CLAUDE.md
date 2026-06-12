@@ -20,7 +20,7 @@
 ## Splash Screen (motion-graphics build)
 The routed splash (`/splash` → `features/auth/presentation/screens/splash_screen.dart`)
 is a hand-built particle-motion screen — no Lottie/Rive, all `CustomPainter` +
-`AnimationController`. First run ends with a **Get Started** CTA → `/onboarding`; a returning user auto-advances past it (→ Home/Login) — see the SplashController note in Auth & Startup Flow.
+`AnimationController`. Every flow funnels through one **Get Started** CTA (shown to all users); tapping it routes via the SplashController — see Auth & Startup Flow.
 - Background `#F5F1FF`; logo ink `#2F216F` (dark purple, painted via `ShaderMask` gradient → primary); primary/sparkle/subtitle `#6C4BFF`; divider `#B084FF`. Tagline sits in a frosted-glass `BackdropFilter` card.
 - Components in `features/auth/presentation/widgets/`:
   - `particle_face_painter.dart` — right-facing AI face from ~900 particles + flowing hair (generated once, animated per-frame).
@@ -73,10 +73,11 @@ lib/
 - The startup **guard** (`resolveStartupRedirect()` in `app_router.dart`, pure + unit-tested) gates on only two things — onboarding + auth:
   - onboarding not seen → Onboarding · seen + logged-out → Login · seen + logged-in → Home (auth screens redirect to Home when signed in).
   - Quizzes are **not** a startup gate — they're reached imperatively after sign-up/first Google login and shown once (guarded by `profileComplete`).
-- Splash acts as a SplashController: **first run** shows the Get Started CTA → Onboarding; a **returning** user auto-advances (logged-in → Home, logged-out → Login).
+- Splash acts as a SplashController: it **always** shows the Get Started CTA; tapping it checks state — signed in → Home · onboarding not seen → Onboarding · else → Login. (No Welcome screen — single Get Started entry; `welcome_screen.dart` removed.)
+- Firebase is initialized in `main.dart` via `FirebaseBootstrap.init()` (safe no-op until `firebase_options.dart`/`google-services.json` exist → mock mode). Login persistence rides on `FirebaseAuth.currentUser` once configured.
 - Flows:
   - First-time: Splash → Get Started → Onboarding (once) → Login/Sign Up → Skin Quiz → Hair Quiz → Home. Email **Sign In** (returning) → Home; **Create Account** → quizzes. Google: new → quizzes, existing → Home.
-  - Returning logged-in → Splash → Home. Logged-out → Splash → Login.
+  - Returning logged-in → Splash → Get Started → Home. Logged-out → Splash → Get Started → Login.
   - Login is the auth root (**no back button**).
 - Settings → Logout → `/login` (auth session only; keeps onboarding + quiz flags). Privacy → Delete Account wipes Firestore + Firebase user + all local flags, then restarts at `/splash` (→ Onboarding → … → quizzes again).
 - `/profile-setup` (legacy) collects **Full Name → Gender → Email → Age → Skin Type → Hair Type**; gender persists to `users/{uid}`. Not in the active flow (sign-up collects name+gender inline).

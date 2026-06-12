@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -8,14 +9,15 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/shop_models.dart';
+import '../../providers/order_provider.dart';
 
-class OrderTrackingScreen extends StatelessWidget {
+class OrderTrackingScreen extends ConsumerWidget {
   final Order order;
 
   const OrderTrackingScreen({super.key, required this.order});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dateShort = DateFormat('dd MMM yyyy');
 
     // Determine the stage index (0-based) from order status
@@ -23,6 +25,7 @@ class OrderTrackingScreen extends StatelessWidget {
 
     const stages = [
       (label: 'Order Placed', icon: Icons.receipt_long_rounded),
+      (label: 'Confirmed', icon: Icons.task_alt_rounded),
       (label: 'Packed', icon: Icons.inventory_2_rounded),
       (label: 'Shipped', icon: Icons.local_shipping_rounded),
       (label: 'Out for Delivery', icon: Icons.delivery_dining_rounded),
@@ -173,6 +176,50 @@ class OrderTrackingScreen extends StatelessWidget {
                 .fadeIn(delay: 200.ms, duration: 500.ms)
                 .slideY(begin: 0.08, end: 0),
 
+            // ── Confirm delivery → auto-add products to My Shelf ─────────────
+            if (order.status != OrderStatus.delivered &&
+                order.status != OrderStatus.cancelled) ...[
+              const SizedBox(height: AppConstants.sp16),
+              GestureDetector(
+                onTap: () {
+                  ref.read(orderProvider.notifier).markDelivered(order.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Delivered! Products added to My Shelf.',
+                          style: AppTypography.bodySmall
+                              .copyWith(color: Colors.white)),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                  context.push('/my-shelf');
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.gradientPrimary,
+                    borderRadius:
+                        BorderRadius.circular(AppConstants.radiusButton),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_circle_outline_rounded,
+                          color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Text('Confirm Delivery',
+                          style: AppTypography.button
+                              .copyWith(color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: AppConstants.sp24),
 
             // ── Delivery address card ────────────────────────────────────────
@@ -310,15 +357,18 @@ class OrderTrackingScreen extends StatelessWidget {
   int _statusToStage(OrderStatus status) {
     switch (status) {
       case OrderStatus.placed:
+      case OrderStatus.cancelled:
         return 0;
-      case OrderStatus.packed:
+      case OrderStatus.confirmed:
         return 1;
-      case OrderStatus.shipped:
+      case OrderStatus.packed:
         return 2;
-      case OrderStatus.outForDelivery:
+      case OrderStatus.shipped:
         return 3;
-      case OrderStatus.delivered:
+      case OrderStatus.outForDelivery:
         return 4;
+      case OrderStatus.delivered:
+        return 5;
     }
   }
 }

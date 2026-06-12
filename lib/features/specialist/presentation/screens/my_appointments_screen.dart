@@ -264,6 +264,8 @@ class _AppointmentCard extends StatelessWidget {
         return (color: AppColors.primary, label: 'Completed', icon: Icons.check_circle_rounded);
       case AppointmentStatus.cancelled:
         return (color: AppColors.error, label: 'Cancelled', icon: Icons.cancel_rounded);
+      case AppointmentStatus.missed:
+        return (color: AppColors.warning, label: 'Missed', icon: Icons.event_busy_rounded);
     }
   }
 

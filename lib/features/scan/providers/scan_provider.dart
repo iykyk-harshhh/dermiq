@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/firebase/analytics_service.dart';
 
 enum ScanSort { bestMatch, highestRated, nameAZ }
 
@@ -50,6 +51,8 @@ class ScanNotifier extends Notifier<ScanState> {
   void recordScan(String name) {
     final recent = [name, ...state.recentScans.where((r) => r != name)];
     state = state.copyWith(recentScans: recent.take(10).toList());
+    // Analytics — Scanner Usage (no-op until Firebase is configured).
+    ref.read(analyticsServiceProvider).logEvent('scanner_used', {'query': name});
   }
 
   void clearSearch() => state = state.copyWith(query: '', categoryIndex: 0);

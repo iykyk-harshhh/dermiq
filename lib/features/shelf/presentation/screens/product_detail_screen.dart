@@ -141,7 +141,19 @@ class _HeroAppBar extends StatelessWidget {
       backgroundColor: const Color(0xFF1E1B4B),
       leading: _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
       actions: [
-        _CircleBtn(icon: Icons.edit_outlined, onTap: () {}),
+        _CircleBtn(
+          icon: Icons.edit_outlined,
+          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Editing ${product.name}…',
+                  style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+              backgroundColor: AppColors.primary,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
         _CircleBtn(icon: Icons.delete_outline_rounded, onTap: onDelete),
         const SizedBox(width: 8),
       ],
@@ -831,13 +843,14 @@ class _ProductInfoCard extends StatelessWidget {
 
 // ── _ActionButtons ────────────────────────────────────────────────────────────
 
-class _ActionButtons extends StatelessWidget {
+class _ActionButtons extends ConsumerWidget {
   final ShelfProduct product;
 
   const _ActionButtons({required this.product});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final emptyColor = product.isEmpty ? AppColors.success : AppColors.warning;
     return Column(
       children: [
         SizedBox(
@@ -853,6 +866,47 @@ class _ActionButtons extends StatelessWidget {
               onPressed: () => context.push('/routine'),
               icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 20),
               label: Text('Add to Routine', style: AppTypography.button.copyWith(color: Colors.white)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: emptyColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: emptyColor.withValues(alpha: 0.30)),
+            ),
+            child: TextButton.icon(
+              onPressed: () {
+                final empty = !product.isEmpty;
+                ref.read(shelfProvider.notifier).setEmpty(product.id, empty);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        empty
+                            ? '${product.name} marked as empty'
+                            : '${product.name} restocked',
+                        style: AppTypography.bodySmall
+                            .copyWith(color: Colors.white)),
+                    backgroundColor: empty ? AppColors.warning : AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              },
+              icon: Icon(
+                  product.isEmpty
+                      ? Icons.refresh_rounded
+                      : Icons.inventory_2_outlined,
+                  color: emptyColor, size: 20),
+              label: Text(
+                product.isEmpty ? 'Mark as Full' : 'Mark as Empty',
+                style: AppTypography.button.copyWith(color: emptyColor),
+              ),
             ),
           ),
         ),

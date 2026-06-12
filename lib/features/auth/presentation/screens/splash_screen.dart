@@ -33,10 +33,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late final AnimationController _entryCtrl; // text fade-up
   late final List<FaceParticle> _particles;
 
-  // SplashController: a first-run user (onboarding not yet completed) taps the
-  // Get Started CTA; a returning user is auto-routed past the splash.
-  late final bool _isFirstRun;
-
   @override
   void initState() {
     super.initState();
@@ -49,16 +45,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..forward();
+  }
 
-    _isFirstRun = !PreferencesService.onboardingSeen;
-    if (!_isFirstRun) {
-      // Returning user → brief splash, then straight on per startup logic:
-      //   logged in → Home · logged out → Login.
-      Future.delayed(const Duration(milliseconds: 1700), () {
-        if (!mounted) return;
-        final loggedIn = ref.read(authStateProvider) != null;
-        context.go(loggedIn ? '/home' : '/login');
-      });
+  /// SplashController — every flow funnels through the Get Started CTA:
+  ///   signed in           → Home
+  ///   onboarding pending   → Onboarding
+  ///   onboarding done      → Login
+  void _onGetStarted() {
+    final loggedIn = ref.read(authStateProvider) != null;
+    if (loggedIn) {
+      context.go('/home');
+    } else if (!PreferencesService.onboardingSeen) {
+      context.go('/onboarding');
+    } else {
+      context.go('/login');
     }
   }
 
@@ -217,30 +217,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                     ),
                   ),
-                  // First run → Get Started CTA (85% width).
-                  // Returning user → subtle loader while auto-advancing.
+                  // Get Started CTA (85% width) — routes per SplashController.
                   FadeTransition(
                     opacity: fade,
-                    child: _isFirstRun
-                        ? FractionallySizedBox(
-                            widthFactor: 0.85,
-                            child: GlowingButton(
-                              onTap: () => context.go('/onboarding'),
-                            ),
-                          )
-                        : const SizedBox(
-                            height: 72,
-                            child: Center(
-                              child: SizedBox(
-                                width: 26,
-                                height: 26,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: _kPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
+                    child: FractionallySizedBox(
+                      widthFactor: 0.85,
+                      child: GlowingButton(onTap: _onGetStarted),
+                    ),
                   ),
                   SizedBox(height: size.height * 0.05),
                 ],

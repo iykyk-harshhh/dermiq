@@ -1,18 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/specialist_models.dart';
+import '../../providers/saved_specialist_provider.dart';
 
-class SpecialistDetailScreen extends StatelessWidget {
+class SpecialistDetailScreen extends ConsumerWidget {
   final String id;
   const SpecialistDetailScreen({super.key, required this.id});
 
+  void _toast(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg,
+            style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = lookupSpecialist(id);
+    final saved = ref.watch(savedSpecialistProvider).contains(id);
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -40,6 +55,27 @@ class SpecialistDetailScreen extends StatelessWidget {
                     color: Colors.white, size: 20),
               ),
             ),
+            actions: [
+              GestureDetector(
+                onTap: () {
+                  ref.read(savedSpecialistProvider.notifier).toggle(id);
+                  _toast(context,
+                      saved ? 'Removed from saved' : 'Specialist saved');
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
@@ -127,6 +163,46 @@ class SpecialistDetailScreen extends StatelessWidget {
                         label: 'Experience', color: AppColors.success)),
                   ],
                 ).animate().fadeIn(duration: 350.ms),
+
+                const SizedBox(height: 12),
+
+                // Quick actions — Call Clinic / Get Directions / Save
+                Row(
+                  children: [
+                    Expanded(
+                      child: _DetailAction(
+                        icon: Icons.call_rounded,
+                        label: 'Call Clinic',
+                        onTap: () => _toast(context,
+                            'Calling ${s.hospital}…'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _DetailAction(
+                        icon: Icons.near_me_rounded,
+                        label: 'Directions',
+                        onTap: () => _toast(context,
+                            'Opening directions to ${s.hospital}…'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _DetailAction(
+                        icon: saved
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                        label: saved ? 'Saved' : 'Save',
+                        highlighted: saved,
+                        onTap: () {
+                          ref.read(savedSpecialistProvider.notifier).toggle(id);
+                          _toast(context,
+                              saved ? 'Removed from saved' : 'Specialist saved');
+                        },
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 40.ms, duration: 350.ms),
 
                 const SizedBox(height: 16),
 
@@ -285,6 +361,52 @@ class _StatChip extends StatelessWidget {
       child: Text(text,
           style: AppTypography.labelSmall.copyWith(
               color: color, fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
+// ── _DetailAction ─────────────────────────────────────────────────────────────
+
+class _DetailAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool highlighted;
+  const _DetailAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.highlighted = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = highlighted ? AppColors.primary : context.dColors.textSecondary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: highlighted
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : context.dColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: highlighted
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : context.dColors.borderLight,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: highlighted ? AppColors.primary : AppColors.primary),
+            const SizedBox(height: 5),
+            Text(label,
+                style: AppTypography.caption.copyWith(
+                    color: color, fontWeight: FontWeight.w600, fontSize: 11)),
+          ],
+        ),
+      ),
     );
   }
 }

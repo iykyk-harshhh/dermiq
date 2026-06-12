@@ -691,7 +691,9 @@ class _CurrentStreakCard extends StatelessWidget {
     final progress = s.progressToNext;
     final pct = (progress * 100).round();
 
-    return Container(
+    return GestureDetector(
+      onTap: () => context.push('/profile/gifts'),
+      child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -764,6 +766,7 @@ class _CurrentStreakCard extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -777,9 +780,11 @@ class _NextRewardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = streakState;
-    final daysLeft = s.nextMilestone - s.current;
+    final daysLeft = s.nextMilestone - s.greenDays;
 
-    return Container(
+    return GestureDetector(
+      onTap: () => context.push('/profile/gifts'),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.dColors.surface,
@@ -822,6 +827,7 @@ class _NextRewardCard extends StatelessWidget {
                     color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
+      ),
       ),
     );
   }

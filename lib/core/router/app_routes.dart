@@ -79,6 +79,7 @@ abstract final class AppRoutes {
 
   // ── Specialist ──────────────────────────────────────────────────────────────
   static const specialist = '/specialist';
+  static const savedSpecialists = '/saved-specialists';
   static const appointments = '/appointments';
   static const appointmentDetailPattern = '/appointment/:id';
   static String appointmentDetail(String id) => '/appointment/$id';
@@ -99,6 +100,7 @@ abstract final class AppRoutes {
   static String shopProductDetail(String id) => '/shop/product/$id';
 
   // ── Profile sub-screens ─────────────────────────────────────────────────────
+  static const profileEdit = '/profile/edit';
   static const profileEditSkin = '/profile/edit-skin';
   static const profileEditHair = '/profile/edit-hair';
   static const profilePreferences = '/profile/preferences';
@@ -189,6 +191,7 @@ abstract final class RouteNames {
   static const calendarReminders = 'calendarReminders';
 
   static const specialist = 'specialist';
+  static const savedSpecialists = 'savedSpecialists';
   static const appointments = 'appointments';
   static const appointmentDetail = 'appointmentDetail';
   static const specialistDetail = 'specialistDetail';
@@ -203,6 +206,7 @@ abstract final class RouteNames {
   static const orders = 'orders';
   static const shopProductDetail = 'shopProductDetail';
 
+  static const profileEdit = 'profileEdit';
   static const profileEditSkin = 'profileEditSkin';
   static const profileEditHair = 'profileEditHair';
   static const profilePreferences = 'profilePreferences';

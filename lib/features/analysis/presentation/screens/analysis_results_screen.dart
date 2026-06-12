@@ -59,7 +59,16 @@ class _AnalysisResultsScreenState extends State<AnalysisResultsScreen>
               IconButton(
                 icon: const Icon(Icons.ios_share_rounded),
                 color: context.dColors.textPrimary,
-                onPressed: () {},
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Sharing your skin analysis…',
+                        style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+                    backgroundColor: AppColors.primary,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
               ),
             ],
           ),

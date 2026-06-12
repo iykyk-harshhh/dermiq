@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum OrderStatus { placed, packed, shipped, outForDelivery, delivered }
+enum OrderStatus { placed, confirmed, packed, shipped, outForDelivery, delivered, cancelled }
 
 enum PaymentMethod { cod, upi, creditCard, debitCard, netBanking, wallet }
 
@@ -154,10 +154,12 @@ class Order {
   String get statusLabel {
     switch (status) {
       case OrderStatus.placed:         return 'Order Placed';
+      case OrderStatus.confirmed:      return 'Confirmed';
       case OrderStatus.packed:         return 'Packed';
       case OrderStatus.shipped:        return 'Shipped';
       case OrderStatus.outForDelivery: return 'Out for Delivery';
       case OrderStatus.delivered:      return 'Delivered';
+      case OrderStatus.cancelled:      return 'Cancelled';
     }
   }
 }

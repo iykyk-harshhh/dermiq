@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../streak/providers/streak_provider.dart';
 import '../../data/shop_models.dart';
 import '../../providers/cart_provider.dart';
 
@@ -27,8 +28,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     super.dispose();
   }
 
-  void _applyCoupon() {
-    final code = _couponController.text.trim();
+  void _applyCode(String code) {
     if (code.isEmpty) return;
     final success = ref.read(cartProvider.notifier).applyCoupon(code);
     setState(() {
@@ -36,6 +36,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     });
     if (success) _couponController.clear();
   }
+
+  void _applyCoupon() => _applyCode(_couponController.text.trim());
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +121,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCartContent(BuildContext context, CartState cart) {
+    final rewardCoupons =
+        activeRewardCoupons(ref.watch(streakProvider).valueOrNull);
     return Column(
       children: [
         Expanded(
@@ -140,7 +144,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 controller: _couponController,
                 appliedCoupon: cart.appliedCoupon,
                 errorText: _couponError,
+                rewardCoupons: rewardCoupons,
                 onApply: _applyCoupon,
+                onApplyCode: _applyCode,
                 onRemove: () {
                   ref.read(cartProvider.notifier).removeCoupon();
                   setState(() => _couponError = null);
@@ -367,14 +373,18 @@ class _CouponSection extends StatelessWidget {
   final TextEditingController controller;
   final Coupon? appliedCoupon;
   final String? errorText;
+  final List<Coupon> rewardCoupons;
   final VoidCallback onApply;
+  final ValueChanged<String> onApplyCode;
   final VoidCallback onRemove;
 
   const _CouponSection({
     required this.controller,
     required this.appliedCoupon,
     required this.errorText,
+    required this.rewardCoupons,
     required this.onApply,
+    required this.onApplyCode,
     required this.onRemove,
   });
 
@@ -490,6 +500,47 @@ class _CouponSection extends StatelessWidget {
               Text(errorText!,
                   style:
                       AppTypography.caption.copyWith(color: AppColors.error)),
+            ],
+            if (rewardCoupons.isNotEmpty) ...[
+              const SizedBox(height: AppConstants.sp12),
+              Text('Your reward coupons',
+                  style: AppTypography.caption
+                      .copyWith(color: context.dColors.textSecondary)),
+              const SizedBox(height: AppConstants.sp8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: rewardCoupons
+                    .map((c) => GestureDetector(
+                          onTap: () => onApplyCode(c.code),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(
+                                  AppConstants.radiusXS),
+                              border: Border.all(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.card_giftcard_rounded,
+                                    size: 13, color: AppColors.primary),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '${c.code} · ${c.discountPct.toInt()}% off',
+                                  style: AppTypography.labelSmall
+                                      .copyWith(color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ))
+                    .toList(),
+              ),
             ],
           ],
         ],

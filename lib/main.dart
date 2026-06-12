@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/preferences_service.dart';
-// import 'core/firebase/firebase_bootstrap.dart';
+import 'core/firebase/firebase_bootstrap.dart';
 import 'core/firebase/messaging_service.dart';
 import 'core/firebase/repositories/user_repository.dart';
 import 'features/auth/providers/auth_provider.dart';
@@ -27,8 +27,9 @@ void main() async {
   await PreferencesService.init();
 
   // Initializes Firebase if configured; otherwise the app runs in mock mode.
-  // Crashlytics error handlers are wired inside init().
-  // await FirebaseBootstrap.init();
+  // Safe to always call — it no-ops gracefully when google-services.json /
+  // firebase_options.dart aren't set up yet. Crashlytics handlers wire inside.
+  await FirebaseBootstrap.init();
 
   runApp(const ProviderScope(child: DermIQApp()));
 }

@@ -8,6 +8,7 @@ import '../data/streak_models.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kCurrent = 'streak_current';
+const _kGreen = 'streak_green';
 const _kBest = 'streak_best';
 const _kLastDate = 'streak_last_date';
 const _kLastAmDone = 'streak_last_am';
@@ -38,6 +39,7 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
     if (isFirstRun) {
       final yesterday = now.subtract(const Duration(days: 1));
       await _prefs.setInt(_kCurrent, 43);
+      await _prefs.setInt(_kGreen, 43);
       await _prefs.setInt(_kBest, 43);
       await _prefs.setString(_kLastDate, yesterday.toIso8601String());
       await _prefs.setBool(_kLastAmDone, true);
@@ -45,6 +47,7 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
     }
 
     var current = _prefs.getInt(_kCurrent) ?? 0;
+    var green = _prefs.getInt(_kGreen) ?? 0;
     final best = _prefs.getInt(_kBest) ?? 0;
     final lastDateStr = _prefs.getString(_kLastDate);
     final claimedRaw = _prefs.getString(_kClaimed);
@@ -60,9 +63,11 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
       final lastDate = DateTime.parse(lastDateStr);
       final diff = now.difference(lastDate).inDays;
       if (diff >= 2) {
-        // Gap of 2+ days means we missed at least one full day.
+        // Gap of 2+ days means we missed at least one full day → red, reset.
         current = 0;
+        green = 0;
         await _prefs.setInt(_kCurrent, 0);
+        await _prefs.setInt(_kGreen, 0);
         // Trigger streak-broken notification.
         _onStreakBroken();
       }
@@ -70,6 +75,7 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
 
     return StreakState(
       current: current,
+      greenDays: green,
       best: best,
       claimedMilestones: claimed,
       rewards: _refreshExpiry(rewards),
@@ -110,7 +116,11 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  /// Called when the user completes AM or PM routine for today.
+  /// Called when the user completes AM or PM routine for today. Encodes the
+  /// day-colour rules:
+  ///   • Green (AM + PM)  → streak +1, green-day +1 (counts toward rewards)
+  ///   • Yellow (one of)  → streak +1, green-day unchanged (keeps streak only)
+  ///   • Red (neither)    → streak & green-days reset to 0
   Future<void> recordDayActivity({
     required bool amDone,
     required bool pmDone,
@@ -120,60 +130,57 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
 
     final now = _today();
     final lastDateStr = _prefs.getString(_kLastDate);
-    final lastDate =
-        lastDateStr != null ? DateTime.parse(lastDateStr) : now.subtract(const Duration(days: 1));
+    final lastDate = lastDateStr != null
+        ? DateTime.parse(lastDateStr)
+        : now.subtract(const Duration(days: 1));
+    final isNewDay = !lastDate.isAtSameMomentAs(now);
 
-    // Only advance streak once per calendar day.
-    final alreadyRecordedToday = lastDate.isAtSameMomentAs(now);
-    final prevAmDone = _prefs.getBool(_kLastAmDone) ?? false;
-    final prevPmDone = _prefs.getBool(_kLastPmDone) ?? false;
-    final wasAnyDone = prevAmDone || prevPmDone;
-    final isAnyDone = amDone || pmDone;
+    final prevAm = _prefs.getBool(_kLastAmDone) ?? false;
+    final prevPm = _prefs.getBool(_kLastPmDone) ?? false;
+    final wasFull = prevAm && prevPm;
+    final wasAny = prevAm || prevPm;
+    final isFull = amDone && pmDone;
+    final isAny = amDone || pmDone;
 
-    if (alreadyRecordedToday) {
-      // Update today's completion but don't increment streak again.
-      await _prefs.setBool(_kLastAmDone, amDone);
-      await _prefs.setBool(_kLastPmDone, pmDone);
-      // If went from nothing → something, increment streak.
-      if (!wasAnyDone && isAnyDone) {
-        await _incrementStreak(s, now);
-      }
-      return;
-    }
-
-    // New day.
-    await _prefs.setString(_kLastDate, now.toIso8601String());
     await _prefs.setBool(_kLastAmDone, amDone);
     await _prefs.setBool(_kLastPmDone, pmDone);
 
-    if (isAnyDone) {
-      await _incrementStreak(s, now);
+    var current = s.current;
+    var green = s.greenDays;
+
+    if (isNewDay) {
+      await _prefs.setString(_kLastDate, now.toIso8601String());
+      if (isFull) {
+        current += 1; // green day
+        green += 1;
+      } else if (isAny) {
+        current += 1; // yellow — keeps streak, no reward credit
+      } else {
+        current = 0; // red — reset everything
+        green = 0;
+      }
     } else {
-      // Missed day → break streak.
-      await _prefs.setInt(_kCurrent, 0);
-      _onStreakBroken();
-      state = AsyncData(s.copyWith(current: 0));
+      // Same calendar day — account for transitions only.
+      if (!wasAny && isAny) current += 1; // first activity today → streak
+      if (!wasFull && isFull) green += 1; // became green today → reward credit
     }
-  }
 
-  Future<void> _incrementStreak(StreakState s, DateTime now) async {
-    final newCurrent = s.current + 1;
-    final newBest = newCurrent > s.best ? newCurrent : s.best;
-    await _prefs.setInt(_kCurrent, newCurrent);
-    await _prefs.setInt(_kBest, newBest);
+    final best = current > s.best ? current : s.best;
+    await _prefs.setInt(_kCurrent, current);
+    await _prefs.setInt(_kGreen, green);
+    await _prefs.setInt(_kBest, best);
 
-    // Check for newly reached milestone.
+    // Milestone unlock — GREEN days only.
     final hitMilestone = rewardMilestones
-        .where((m) => m <= newCurrent && !s.claimedMilestones.contains(m))
+        .where((m) => m <= green && !s.claimedMilestones.contains(m))
         .lastOrNull;
-
-    if (hitMilestone != null) {
-      _onRewardUnlocked(hitMilestone);
-    }
+    if (hitMilestone != null) _onRewardUnlocked(hitMilestone);
+    if (current == 0) _onStreakBroken();
 
     state = AsyncData(s.copyWith(
-      current: newCurrent,
-      best: newBest,
+      current: current,
+      greenDays: green,
+      best: best,
       pendingMilestone: hitMilestone,
     ));
   }

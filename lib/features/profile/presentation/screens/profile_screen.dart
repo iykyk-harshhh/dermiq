@@ -258,6 +258,12 @@ class ProfileScreen extends ConsumerWidget {
                       onTap: () => context.push('/appointments'),
                     ),
                     _MenuTile(
+                      icon: Icons.bookmark_rounded,
+                      label: 'Saved Specialists',
+                      subtitle: 'Your bookmarked doctors',
+                      onTap: () => context.push('/saved-specialists'),
+                    ),
+                    _MenuTile(
                       icon: Icons.inventory_2_outlined,
                       label: 'My Shelf',
                       subtitle: 'Saved products & expiry',

@@ -1,5 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../streak/data/streak_models.dart';
+import '../../streak/providers/streak_provider.dart';
 import '../data/shop_models.dart';
+
+/// Coupons derived from the user's active reward gifts (a discount % parsed from
+/// the reward name, e.g. "10% Off Skincare Products"). These are redeemable at
+/// checkout alongside the standard [availableCoupons].
+List<Coupon> activeRewardCoupons(StreakState? streak) {
+  if (streak == null) return const [];
+  final out = <Coupon>[];
+  for (final r in streak.rewards) {
+    if (r.status != RewardStatus.active) continue;
+    final m = RegExp(r'(\d+)\s*%').firstMatch(r.name);
+    if (m == null) continue;
+    final pct = double.tryParse(m.group(1)!) ?? 0;
+    if (pct <= 0) continue;
+    out.add(Coupon(code: 'REWARD${pct.toInt()}', discountPct: pct));
+  }
+  return out;
+}
 
 class CartState {
   final List<CartItem> items;
@@ -65,8 +84,12 @@ class CartNotifier extends Notifier<CartState> {
   }
 
   bool applyCoupon(String code) {
-    final coupon = availableCoupons
-        .where((c) => c.code.toUpperCase() == code.toUpperCase())
+    final up = code.toUpperCase();
+    var coupon =
+        availableCoupons.where((c) => c.code.toUpperCase() == up).firstOrNull;
+    // Also accept reward coupons earned via streak milestones.
+    coupon ??= activeRewardCoupons(ref.read(streakProvider).valueOrNull)
+        .where((c) => c.code.toUpperCase() == up)
         .firstOrNull;
     if (coupon == null) return false;
     state = state.copyWith(appliedCoupon: coupon);

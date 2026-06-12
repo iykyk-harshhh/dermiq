@@ -110,7 +110,7 @@ class MyOrdersScreen extends ConsumerWidget {
   }
 }
 
-class _OrderCard extends StatelessWidget {
+class _OrderCard extends ConsumerWidget {
   final Order order;
   final int index;
 
@@ -120,6 +120,8 @@ class _OrderCard extends StatelessWidget {
     switch (s) {
       case OrderStatus.placed:
         return AppColors.primary;
+      case OrderStatus.confirmed:
+        return AppColors.primary;
       case OrderStatus.packed:
         return AppColors.warning;
       case OrderStatus.shipped:
@@ -128,11 +130,41 @@ class _OrderCard extends StatelessWidget {
         return AppColors.warning;
       case OrderStatus.delivered:
         return AppColors.success;
+      case OrderStatus.cancelled:
+        return AppColors.error;
     }
   }
 
+  void _confirmCancel(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Cancel Order?', style: AppTypography.h4),
+        content: Text('Order ${order.orderIdDisplay} will be cancelled.',
+            style: AppTypography.bodyMedium),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Keep',
+                style: AppTypography.buttonSmall
+                    .copyWith(color: context.dColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(orderProvider.notifier).cancelOrder(order.id);
+            },
+            child: Text('Cancel Order',
+                style: AppTypography.buttonSmall.copyWith(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dateFormat = DateFormat('dd MMM yyyy');
     final statusColor = _statusColor(order.status);
     final visibleItems =
@@ -273,6 +305,28 @@ class _OrderCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppConstants.sp8),
+              if (order.status != OrderStatus.delivered &&
+                  order.status != OrderStatus.cancelled) ...[
+                GestureDetector(
+                  onTap: () => _confirmCancel(context, ref),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.sp12,
+                        vertical: AppConstants.sp8),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusButton),
+                      border: Border.all(
+                          color: AppColors.error.withValues(alpha: 0.3)),
+                    ),
+                    child: Text('Cancel',
+                        style: AppTypography.buttonSmall
+                            .copyWith(color: AppColors.error)),
+                  ),
+                ),
+                const SizedBox(width: AppConstants.sp8),
+              ],
               GestureDetector(
                 onTap: () => context.push(
                     '/order-tracking/${order.id}',

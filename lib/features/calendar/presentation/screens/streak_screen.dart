@@ -21,8 +21,8 @@ class _StreakScreenState extends State<StreakScreen>
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
 
-  // Milestones to celebrate
-  static const _milestones = [7, 30, 50, 100, 150, 200, 365];
+  // Milestones to celebrate (reward milestones — green days)
+  static const _milestones = [50, 100, 150, 200, 250, 300, 365];
 
   @override
   void initState() {
@@ -425,12 +425,12 @@ class _MilestoneRow extends StatelessWidget {
 
   String get _title {
     switch (days) {
-      case 7:   return 'One Week Warrior';
-      case 30:  return 'Monthly Master';
       case 50:  return 'Fifty Day Force';
       case 100: return 'Century Champion';
       case 150: return 'Glow Legend';
       case 200: return 'Skin Immortal';
+      case 250: return 'Radiance Royalty';
+      case 300: return 'Triple Century';
       case 365: return 'Year of Radiance';
       default:  return '$days Day Streak';
     }

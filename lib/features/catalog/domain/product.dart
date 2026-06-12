@@ -16,6 +16,7 @@ class Product {
   final DateTime expiryDate;
   final DateTime purchaseDate;
   final bool isFavourite;
+  final bool isEmpty; // user marked the product as used up
   final String notes;
   final List<String> benefits;
   final List<String> safeIngredients;
@@ -37,6 +38,7 @@ class Product {
     required this.expiryDate,
     required this.purchaseDate,
     this.isFavourite = false,
+    this.isEmpty = false,
     this.notes = '',
     this.benefits = const [],
     this.safeIngredients = const [],
@@ -70,6 +72,7 @@ class Product {
     DateTime? expiryDate,
     DateTime? purchaseDate,
     bool? isFavourite,
+    bool? isEmpty,
     String? notes,
     List<String>? benefits,
     List<String>? safeIngredients,
@@ -90,6 +93,7 @@ class Product {
       expiryDate: expiryDate ?? this.expiryDate,
       purchaseDate: purchaseDate ?? this.purchaseDate,
       isFavourite: isFavourite ?? this.isFavourite,
+      isEmpty: isEmpty ?? this.isEmpty,
       notes: notes ?? this.notes,
       benefits: benefits ?? this.benefits,
       safeIngredients: safeIngredients ?? this.safeIngredients,
@@ -114,6 +118,7 @@ class Product {
         'expiryDate': Timestamp.fromDate(expiryDate),
         'purchaseDate': Timestamp.fromDate(purchaseDate),
         'isFavourite': isFavourite,
+        'isEmpty': isEmpty,
         'notes': notes,
         'benefits': benefits,
         'safeIngredients': safeIngredients,
@@ -145,6 +150,7 @@ class Product {
           purchase.add(const Duration(days: 365))),
       purchaseDate: purchase,
       isFavourite: data['isFavourite'] as bool? ?? false,
+      isEmpty: data['isEmpty'] as bool? ?? false,
       notes: data['notes'] as String? ?? '',
       benefits: List<String>.from(data['benefits'] ?? const []),
       safeIngredients: List<String>.from(data['safeIngredients'] ?? const []),
