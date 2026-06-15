@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/ios_notification.dart';
 import '../../data/shop_models.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
@@ -86,6 +87,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     ref.read(cartProvider.notifier).clear();
 
     if (!mounted) return;
+    // iOS-style drop-in notification confirming the order (persists over the
+    // navigation via the root overlay).
+    IosNotification.show(
+      context,
+      title: 'Order Confirmed',
+      message: 'Your order ${order.orderIdDisplay} is on its way. '
+          'Arriving by ${order.estimatedDelivery.day}/${order.estimatedDelivery.month}.',
+      icon: Icons.local_shipping_rounded,
+      color: AppColors.success,
+    );
     context.go('/order-success', extra: order);
   }
 

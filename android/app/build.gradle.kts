@@ -8,8 +8,8 @@ plugins {
     // Firebase plugins — keep DISABLED until `flutterfire configure` adds
     // google-services.json. The Crashlytics plugin REQUIRES google-services,
     // so both must be enabled together or the build fails.
-    // id("com.google.gms.google-services")
-    // id("com.google.firebase.crashlytics")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 // Release signing is read from android/key.properties (git-ignored). When that

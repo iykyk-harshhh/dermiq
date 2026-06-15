@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "411761891980",
+    "project_id": "dermiq-83cfd",
+    "storage_bucket": "dermiq-83cfd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:411761891980:android:312999f6ceae457be4b9a9",
+        "android_client_info": {
+          "package_name": "com.dermiq.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "411761891980-jsbi0m24on4p2p6brp5v9jhf514p9t9n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dermiq.app",
+            "certificate_hash": "cece85e036d8927d990c27001a2380ec635b1ab3"
+          }
+        },
+        {
+          "client_id": "411761891980-r2crurrcu3mkdjqc3fsegnfhaakrt0tf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dermiq.app",
+            "certificate_hash": "23958b995433edaef065a63a0dbd73d77b99cdaa"
+          }
+        },
+        {
+          "client_id": "411761891980-m68il5lbmfk8k1sqkrjhg6l84uosubvt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAg0k_kZX0XqKR9uwS6zmWok_I85jfd-xA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "411761891980-m68il5lbmfk8k1sqkrjhg6l84uosubvt.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "411761891980-52qr18v0dmqufkf0hi5cq6de9qa8fc7d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.dermiq"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

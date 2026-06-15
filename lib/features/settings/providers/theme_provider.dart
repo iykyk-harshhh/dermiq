@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/firebase/repositories/user_repository.dart';
+import '../../auth/providers/auth_provider.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum AppThemeMode { light, dark, system }
@@ -54,12 +57,12 @@ class ThemeNotifier extends AsyncNotifier<AppThemeMode> {
     // Persist locally.
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kThemeKey, mode.name);
-    // Firebase stub — wire when google-services.json is committed:
-    // final uid = ref.read(authStateProvider)?.id;
-    // if (uid != null) {
-    //   await ref.read(userRepositoryProvider)
-    //       ?.updateSettings(uid, {'selectedTheme': mode.name});
-    // }
+    // Mirror to Firestore (no-op when signed out / Firebase unavailable).
+    final uid = ref.read(authStateProvider)?.id;
+    final repo = ref.read(userRepositoryProvider);
+    if (uid != null && repo != null) {
+      await repo.updateFields(uid, {'selectedTheme': mode.name});
+    }
   }
 }
 

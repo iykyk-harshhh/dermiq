@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,10 +25,15 @@ class ShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopScreenState extends ConsumerState<ShopScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Used by the fly-to-cart animation: locates the app-bar cart icon and gives
+  // it a small bounce when a product lands in it.
+  final GlobalKey _cartKey = GlobalKey();
+  double _cartScale = 1.0;
 
   int _activeTab = 0;
   String _query = '';
@@ -107,21 +114,89 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       _maxPrice < 5000 ||
       _minRating > 0;
 
-  void _addToCart(ShopProduct product) {
+  void _addToCart(ShopProduct product, Rect from) {
     ref.read(cartProvider.notifier).addItem(product);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${product.name} added to cart',
-          style: AppTypography.labelMedium.copyWith(color: Colors.white),
+    _flyToCart(product, from);
+  }
+
+  /// GSAP-style "animate between layout positions": a product thumbnail flies in
+  /// an arc from the tapped card to the app-bar cart icon, then the cart bounces.
+  void _flyToCart(ShopProduct product, Rect from) {
+    final overlay = Overlay.of(context);
+    final cartBox =
+        _cartKey.currentContext?.findRenderObject() as RenderBox?;
+    if (cartBox == null || from == Rect.zero) return;
+
+    final target = cartBox.localToGlobal(cartBox.size.center(Offset.zero));
+    // Launch from the product image area (top portion of the card).
+    final start = Offset(from.center.dx, from.top + from.height * 0.28);
+
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 620),
+    );
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => AnimatedBuilder(
+        animation: controller,
+        builder: (_, _) {
+          final raw = controller.value;
+          final t = Curves.easeInOutCubic.transform(raw);
+          final pos = Offset.lerp(start, target, t)!;
+          final arc = -math.sin(raw * math.pi) * 70; // parabolic lift
+          final scale = 1.0 - 0.62 * t;
+          final opacity = raw < 0.85 ? 1.0 : (1 - (raw - 0.85) / 0.15);
+          const s = 60.0;
+          return Positioned(
+            left: pos.dx - s / 2,
+            top: pos.dy - s / 2 + arc,
+            child: Opacity(
+              opacity: opacity.clamp(0.0, 1.0),
+              child: Transform.scale(
+                scale: scale,
+                child: _flyThumb(product, s),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    overlay.insert(entry);
+    controller.forward().whenComplete(() {
+      entry.remove();
+      controller.dispose();
+      if (!mounted) return;
+      setState(() => _cartScale = 1.28);
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) setState(() => _cartScale = 1.0);
+      });
+    });
+  }
+
+  Widget _flyThumb(ShopProduct p, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [p.accentColor, p.accentColor.withValues(alpha: 0.72)],
         ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-        ),
-        duration: const Duration(seconds: 2),
+        boxShadow: [
+          BoxShadow(
+            color: p.accentColor.withValues(alpha: 0.45),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        p.brand.isNotEmpty ? p.brand[0].toUpperCase() : '?',
+        style: AppTypography.h4.copyWith(color: Colors.white),
       ),
     );
   }
@@ -133,6 +208,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     final allBrands = _brandsFor(
       _activeTab == 0 ? skincare : haircare,
     );
+    final cartCount = ref.watch(cartProvider).itemCount;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -182,6 +258,51 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           style: AppTypography.h3.copyWith(color: context.dColors.textPrimary),
         ),
         actions: [
+          // Cart — fly-to-cart target; badge shows the live item count.
+          GestureDetector(
+            onTap: () => context.push('/cart'),
+            child: AnimatedScale(
+              scale: _cartScale,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutBack,
+              child: Container(
+                key: _cartKey,
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(Icons.shopping_bag_outlined,
+                        color: context.dColors.textPrimary, size: 24),
+                    if (cartCount > 0)
+                      Positioned(
+                        top: -3,
+                        right: -4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          constraints: const BoxConstraints(minWidth: 16),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            cartCount > 9 ? '9+' : '$cartCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           IconButton(
             icon: Icon(Icons.tune_rounded, color: context.dColors.textPrimary),
             onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
@@ -332,7 +453,7 @@ class _ProductGrid extends StatelessWidget {
 
   final List<ShopProduct> products;
   final ValueChanged<ShopProduct> onTap;
-  final ValueChanged<ShopProduct> onAddToCart;
+  final void Function(ShopProduct product, Rect source) onAddToCart;
 
   @override
   Widget build(BuildContext context) {
@@ -401,7 +522,7 @@ class _ProductGrid extends StatelessWidget {
             return _ShopProductCard(
               product: products[i],
               onTap: () => onTap(products[i]),
-              onAddToCart: () => onAddToCart(products[i]),
+              onAddToCart: (rect) => onAddToCart(products[i], rect),
             )
                 .animate(delay: Duration(milliseconds: 60 * i))
                 .fadeIn(duration: 350.ms)
@@ -426,7 +547,7 @@ class _ShopProductCard extends StatelessWidget {
 
   final ShopProduct product;
   final VoidCallback onTap;
-  final VoidCallback onAddToCart;
+  final void Function(Rect source) onAddToCart;
 
   @override
   Widget build(BuildContext context) {
@@ -632,9 +753,15 @@ class _ShopProductCard extends StatelessWidget {
 
                     const Spacer(),
 
-                    // Add to Cart button
+                    // Add to Cart button — reports its global rect so the
+                    // screen can fly the product to the cart icon.
                     GestureDetector(
-                      onTap: onAddToCart,
+                      onTap: () {
+                        final box = context.findRenderObject() as RenderBox?;
+                        onAddToCart(box != null
+                            ? (box.localToGlobal(Offset.zero) & box.size)
+                            : Rect.zero);
+                      },
                       child: Container(
                         width: double.infinity,
                         height: 36,
@@ -1080,7 +1207,7 @@ class _SearchResultsSlider extends StatefulWidget {
 
   final List<ShopProduct> products;
   final ValueChanged<ShopProduct> onTap;
-  final ValueChanged<ShopProduct> onAddToCart;
+  final void Function(ShopProduct product, Rect source) onAddToCart;
 
   @override
   State<_SearchResultsSlider> createState() => _SearchResultsSliderState();
@@ -1181,7 +1308,7 @@ class _SearchResultsSliderState extends State<_SearchResultsSlider> {
                       child: _ShopProductCard(
                         product: product,
                         onTap: () => widget.onTap(product),
-                        onAddToCart: () => widget.onAddToCart(product),
+                        onAddToCart: (rect) => widget.onAddToCart(product, rect),
                       ),
                     ),
                   ),

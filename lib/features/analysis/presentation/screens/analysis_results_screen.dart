@@ -1,19 +1,22 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../../home/providers/health_score_provider.dart';
+import '../../providers/analysis_provider.dart';
 
-class AnalysisResultsScreen extends StatefulWidget {
+class AnalysisResultsScreen extends ConsumerStatefulWidget {
   const AnalysisResultsScreen({super.key});
 
   @override
-  State<AnalysisResultsScreen> createState() => _AnalysisResultsScreenState();
+  ConsumerState<AnalysisResultsScreen> createState() => _AnalysisResultsScreenState();
 }
 
-class _AnalysisResultsScreenState extends State<AnalysisResultsScreen>
+class _AnalysisResultsScreenState extends ConsumerState<AnalysisResultsScreen>
     with SingleTickerProviderStateMixin {
   int _tab = 0;
   late final AnimationController _ringCtrl;
@@ -26,9 +29,8 @@ class _AnalysisResultsScreenState extends State<AnalysisResultsScreen>
     super.initState();
     _ringCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
       ..forward();
-    _ringProgress = Tween<double>(begin: 0, end: 0.82).animate(
-      CurvedAnimation(parent: _ringCtrl, curve: Curves.easeOutCubic),
-    );
+    // 0→1 reveal; the live overall score scales it in during build.
+    _ringProgress = CurvedAnimation(parent: _ringCtrl, curve: Curves.easeOutCubic);
   }
 
   @override
@@ -39,6 +41,7 @@ class _AnalysisResultsScreenState extends State<AnalysisResultsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final result = ref.watch(analysisProvider);
     return Scaffold(
       backgroundColor: context.dColors.background,
       body: CustomScrollView(
@@ -80,7 +83,7 @@ class _AnalysisResultsScreenState extends State<AnalysisResultsScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Score card
-                  _ScoreCard(ringProgress: _ringProgress)
+                  _ScoreCard(ringProgress: _ringProgress, score: result.overallScore)
                       .animate()
                       .fadeIn(duration: 400.ms)
                       .slideY(begin: 0.1),
@@ -120,10 +123,18 @@ class _AnalysisResultsScreenState extends State<AnalysisResultsScreen>
                   const SizedBox(height: 20),
 
                   // Results list
-                  ..._buildResults().asMap().entries.map((e) => e.value
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: Duration(milliseconds: 150 + e.key * 60))
-                      .slideY(begin: 0.1)),
+                  ...result.concerns
+                      .map((c) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _ConcernCard(concern: c),
+                          ))
+                      .toList()
+                      .asMap()
+                      .entries
+                      .map((e) => e.value
+                          .animate()
+                          .fadeIn(duration: 400.ms, delay: Duration(milliseconds: 150 + e.key * 60))
+                          .slideY(begin: 0.1)),
 
                   const SizedBox(height: 24),
 
@@ -169,31 +180,16 @@ class _AnalysisResultsScreenState extends State<AnalysisResultsScreen>
     );
   }
 
-  List<Widget> _buildResults() {
-    const results = [
-      _ConcernResult('Spots', 'Mild', 25, Color(0xFFFF8C6B),
-          'Some hyperpigmentation detected on your cheeks.'),
-      _ConcernResult('Wrinkles', 'Fine', 20, Color(0xFF9B82D4),
-          'Fine lines around the eye area.'),
-      _ConcernResult('Texture', 'Moderate', 45, Color(0xFFFF9B6B),
-          'Uneven texture on T-zone.'),
-      _ConcernResult('Pores', 'Mild', 30, Color(0xFF7B62C4),
-          'Slightly enlarged pores on nose.'),
-    ];
-
-    return results.map((r) => Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _ConcernCard(result: r),
-    )).toList();
-  }
 }
 
 class _ScoreCard extends StatelessWidget {
   final Animation<double> ringProgress;
-  const _ScoreCard({required this.ringProgress});
+  final int score;
+  const _ScoreCard({required this.ringProgress, required this.score});
 
   @override
   Widget build(BuildContext context) {
+    final band = scoreBand(score);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -216,7 +212,7 @@ class _ScoreCard extends StatelessWidget {
                     AnimatedBuilder(
                       animation: ringProgress,
                       builder: (_, _) => Text(
-                        '${(82 * ringProgress.value).round()}',
+                        '${(score * ringProgress.value).round()}',
                         style: AppTypography.metricMedium.copyWith(
                             color: context.dColors.textPrimary, fontSize: 40),
                       ),
@@ -235,13 +231,13 @@ class _ScoreCard extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                          shape: BoxShape.circle, color: Color(0xFF22C55E)),
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle, color: Color(band.color)),
                     ),
                     const SizedBox(width: 6),
-                    Text('Great',
+                    Text(band.label,
                         style: AppTypography.caption
-                            .copyWith(color: const Color(0xFF22C55E))),
+                            .copyWith(color: Color(band.color))),
                   ],
                 ),
               ],
@@ -254,7 +250,7 @@ class _ScoreCard extends StatelessWidget {
               height: 80,
               child: CustomPaint(
                   painter: _MiniRingPainter(
-                      progress: ringProgress.value,
+                      progress: (score / 100.0) * ringProgress.value,
                       trackColor: context.dColors.borderLight)),
             ),
           ),
@@ -297,18 +293,9 @@ class _MiniRingPainter extends CustomPainter {
       old.progress != progress || old.trackColor != trackColor;
 }
 
-class _ConcernResult {
-  final String name;
-  final String severity;
-  final int percent;
-  final Color color;
-  final String description;
-  const _ConcernResult(this.name, this.severity, this.percent, this.color, this.description);
-}
-
 class _ConcernCard extends StatelessWidget {
-  final _ConcernResult result;
-  const _ConcernCard({required this.result});
+  final SkinConcern concern;
+  const _ConcernCard({required this.concern});
 
   @override
   Widget build(BuildContext context) {
@@ -325,10 +312,10 @@ class _ConcernCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: result.color.withValues(alpha: 0.12),
+              color: concern.color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.circle, color: result.color, size: 16),
+            child: Icon(Icons.circle, color: concern.color, size: 16),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -338,7 +325,7 @@ class _ConcernCard extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(result.name,
+                      child: Text(concern.name,
                           style: AppTypography.labelMedium
                               .copyWith(color: context.dColors.textPrimary),
                           maxLines: 1,
@@ -348,16 +335,16 @@ class _ConcernCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: result.color.withValues(alpha: 0.12),
+                        color: concern.color.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(result.severity,
-                          style: AppTypography.caption.copyWith(color: result.color)),
+                      child: Text(concern.severity,
+                          style: AppTypography.caption.copyWith(color: concern.color)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(result.description,
+                Text(concern.description,
                     style: AppTypography.bodySmall.copyWith(color: context.dColors.textSecondary),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis),
@@ -365,9 +352,9 @@ class _ConcernCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
-                    value: result.percent / 100.0,
+                    value: concern.percent / 100.0,
                     backgroundColor: context.dColors.borderLight,
-                    valueColor: AlwaysStoppedAnimation(result.color),
+                    valueColor: AlwaysStoppedAnimation(concern.color),
                     minHeight: 4,
                   ),
                 ),
@@ -375,7 +362,7 @@ class _ConcernCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Text('${result.percent}%',
+          Text('${concern.percent}%',
               style: AppTypography.labelSmall
                   .copyWith(color: context.dColors.textSecondary, fontWeight: FontWeight.w600)),
         ],

@@ -12,5 +12,6 @@ export 'app_top_bar.dart';
 export 'diq_logo.dart';
 export 'empty_state.dart';
 export 'glass_container.dart';
+export 'ios_notification.dart';
 export 'score_ring.dart';
 export 'section_header.dart';

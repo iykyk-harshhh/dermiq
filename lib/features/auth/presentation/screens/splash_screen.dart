@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
+import 'package:go_router/go_router.dart';
 
-class SplashScreen extends StatefulWidget {
+import '../../../../core/services/preferences_service.dart';
+import '../../providers/auth_provider.dart';
+
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   late VideoPlayerController _controller;
 
@@ -32,6 +38,20 @@ class _SplashScreenState extends State<SplashScreen> {
     super.dispose();
   }
 
+  /// Route straight to the correct destination so the router guard never has to
+  /// redirect mid-navigation: signed-in → Home, onboarded-but-logged-out →
+  /// Login, first launch → Onboarding.
+  void _onGetStarted() {
+    final loggedIn = ref.read(authStateProvider) != null;
+    if (loggedIn) {
+      context.go('/home');
+    } else if (!PreferencesService.onboardingSeen) {
+      context.go('/onboarding');
+    } else {
+      context.go('/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
 
@@ -50,6 +70,8 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
 
+          // Soft scrim so the text stays legible over the motion graphics —
+          // transparent at the face, deepening toward the bottom CTA.
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -57,92 +79,154 @@ class _SplashScreenState extends State<SplashScreen> {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.white.withOpacity(.15),
+                  const Color(0xFFF5F1FF).withValues(alpha: 0.0),
+                  const Color(0xFFF5F1FF).withValues(alpha: 0.55),
+                  const Color(0xFFF5F1FF).withValues(alpha: 0.85),
                 ],
+                stops: const [0.0, 0.45, 0.78, 1.0],
               ),
             ),
           ),
 
           SafeArea(
-            child: Column(
-              children: [
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                children: [
+                  const Spacer(flex: 7),
 
-                const Spacer(),
-
-                Text(
-                  "dermiq",
-                  style: TextStyle(
-                    fontSize: 56,
-                    fontWeight: FontWeight.w300,
-                    color: Color(0xFF432A8A),
-                    letterSpacing: -2,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                Text(
-                  "Smart skincare, just for you.",
-                  style: TextStyle(
-                    fontSize: 22,
-                    color: Color(0xFF432A8A),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(
-                    "AI-powered skin insights for healthier, happier skin.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF5A4A8A),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 80),
-
-                GestureDetector(
-                  onTap: () {
-
-                    Navigator.pushReplacementNamed(
-                      context,
-                      '/onboarding',
-                    );
-
-                  },
-                  child: Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF8A6DFF),
-                          Color(0xFFA88BFF),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFF8A6DFF)
-                              .withOpacity(.4),
-                          blurRadius: 30,
-                        )
+                  // App name
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFEFE8FF), // soft white-lilac highlight
+                        Color(0xFFB084FF), // light purple
+                        Color(0xFF8A6DFF), // brand purple
+                      ],
+                      stops: [0.0, 0.5, 1.0],
+                    ).createShader(bounds),
+                    child: Text(
+                    "dermiq",
+                    style: GoogleFonts.poppins(
+                      fontSize: 60,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -1.5,
+                      height: 1.0,
+                      shadows: [
+                        // Soft purple glow so the wordmark lifts off the
+                        // motion-graphics background and reads instantly.
+                        Shadow(
+                          color: const Color(0xFF2F216F).withValues(alpha: 0.55),
+                          blurRadius: 24,
+                          offset: const Offset(0, 4),
+                        ),
+                        Shadow(
+                          color: const Color(0xFF8A6DFF).withValues(alpha: 0.6),
+                          blurRadius: 40,
+                        ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.arrow_forward,
-                      color: Colors.white,
-                      size: 34,
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 80),
-              ],
+                  const SizedBox(height: 14),
+
+                  // Tagline
+                  Text(
+                    "Smart skincare, just for you.",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFE9DEFF),
+                      letterSpacing: 0.2,
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFF2F216F).withValues(alpha: 0.6),
+                          blurRadius: 16,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Supporting line
+                  Text(
+                    "AI-powered skin insights for\nhealthier, happier skin.",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      height: 1.5,
+                      color: const Color(0xFFD9C9FF).withValues(alpha: 0.95),
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFF2F216F).withValues(alpha: 0.55),
+                          blurRadius: 14,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // Get Started pill CTA
+                  GestureDetector(
+                    onTap: _onGetStarted,
+                    child: Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 320),
+                      height: 64,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(32),
+                        gradient: const LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            Color(0xFF8A6DFF),
+                            Color(0xFFB084FF),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF8A6DFF).withValues(alpha: 0.45),
+                            blurRadius: 28,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "Get Started",
+                            style: GoogleFonts.inter(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const Spacer(flex: 1),
+                ],
+              ),
             ),
           ),
         ],

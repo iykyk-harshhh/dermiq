@@ -1,31 +1,31 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../providers/health_score_provider.dart';
 
-class SkinScoreWidget extends StatefulWidget {
+class SkinScoreWidget extends ConsumerStatefulWidget {
   const SkinScoreWidget({super.key});
 
   @override
-  State<SkinScoreWidget> createState() => _SkinScoreWidgetState();
+  ConsumerState<SkinScoreWidget> createState() => _SkinScoreWidgetState();
 }
 
-class _SkinScoreWidgetState extends State<SkinScoreWidget>
+class _SkinScoreWidgetState extends ConsumerState<SkinScoreWidget>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  late final Animation<double> _progress;
-
-  static const _score = 82;
+  late final Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
       ..forward();
-    _progress = Tween<double>(begin: 0, end: _score / 100.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
-    );
+    // 0→1 reveal; the live score is multiplied in during build so the card
+    // always animates to whatever the provider currently holds.
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
   }
 
   @override
@@ -36,6 +36,8 @@ class _SkinScoreWidgetState extends State<SkinScoreWidget>
 
   @override
   Widget build(BuildContext context) {
+    final score = ref.watch(healthScoreProvider);
+    final band = scoreBand(score);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -62,12 +64,12 @@ class _SkinScoreWidgetState extends State<SkinScoreWidget>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AnimatedBuilder(
-                      animation: _progress,
+                      animation: _anim,
                       builder: (_, _) => Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '${(_score * _progress.value).round()}',
+                            '${(score * _anim.value).round()}',
                             style: AppTypography.metricMedium.copyWith(
                                 color: AppColors.textPrimary, fontSize: 44),
                           ),
@@ -86,25 +88,26 @@ class _SkinScoreWidgetState extends State<SkinScoreWidget>
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle, color: Color(0xFF22C55E)),
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle, color: Color(band.color)),
                         ),
                         const SizedBox(width: 6),
-                        Text('Great',
+                        Text(band.label,
                             style: AppTypography.labelSmall
-                                .copyWith(color: const Color(0xFF22C55E))),
+                                .copyWith(color: Color(band.color))),
                       ],
                     ),
                   ],
                 ),
               ),
               AnimatedBuilder(
-                animation: _progress,
+                animation: _anim,
                 builder: (_, _) => SizedBox(
                   width: 90,
                   height: 90,
                   child: CustomPaint(
-                      painter: _ScoreRingPainter(progress: _progress.value)),
+                      painter: _ScoreRingPainter(
+                          progress: (score / 100.0) * _anim.value)),
                 ),
               ),
             ],
