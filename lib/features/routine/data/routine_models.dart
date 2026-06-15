@@ -32,6 +32,20 @@ class RoutineDay {
 
   bool get anyDone => amDone || pmDone;
   bool get fullDone => amDone && pmDone;
+
+  Map<String, dynamic> toMap() => {
+        'label': label,
+        'amDone': amDone,
+        'pmDone': pmDone,
+        'score': score,
+      };
+
+  factory RoutineDay.fromMap(Map<String, dynamic> m) => RoutineDay(
+        m['label'] as String? ?? '',
+        m['amDone'] as bool? ?? false,
+        m['pmDone'] as bool? ?? false,
+        (m['score'] as num?)?.toInt() ?? 0,
+      );
 }
 
 // ── AM Steps ──────────────────────────────────────────────────────────────────

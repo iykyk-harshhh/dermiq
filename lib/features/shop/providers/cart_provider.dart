@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/preferences_service.dart';
 import '../../streak/data/streak_models.dart';
 import '../../streak/providers/streak_provider.dart';
 import '../data/shop_models.dart';
@@ -48,7 +50,27 @@ class CartState {
 
 class CartNotifier extends Notifier<CartState> {
   @override
-  CartState build() => const CartState();
+  CartState build() => CartState(items: _loadItems());
+
+  /// Reads the persisted cart (synchronous — `PreferencesService` is loaded at
+  /// startup). The applied coupon is intentionally transient.
+  static List<CartItem> _loadItems() {
+    final raw = PreferencesService.cartJson;
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = jsonDecode(raw) as List;
+      return list
+          .map((e) => CartItem.fromMap((e as Map).cast<String, dynamic>()))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  void _persist() {
+    PreferencesService.setCartJson(
+        jsonEncode(state.items.map((i) => i.toMap()).toList()));
+  }
 
   void addItem(ShopProduct product) {
     // if already in cart, increment quantity
@@ -63,12 +85,14 @@ class CartNotifier extends Notifier<CartState> {
       state = state.copyWith(
           items: [...state.items, CartItem(product: product)]);
     }
+    _persist();
   }
 
   void removeItem(String productId) {
     state = state.copyWith(
       items: state.items.where((i) => i.product.id != productId).toList(),
     );
+    _persist();
   }
 
   void updateQuantity(String productId, int qty) {
@@ -81,6 +105,7 @@ class CartNotifier extends Notifier<CartState> {
             i.product.id == productId ? i.copyWith(quantity: qty) : i)
         .toList();
     state = state.copyWith(items: updated);
+    _persist();
   }
 
   bool applyCoupon(String code) {
@@ -98,7 +123,10 @@ class CartNotifier extends Notifier<CartState> {
 
   void removeCoupon() => state = state.copyWith(clearCoupon: true);
 
-  void clear() => state = const CartState();
+  void clear() {
+    state = const CartState();
+    _persist();
+  }
 }
 
 final cartProvider =

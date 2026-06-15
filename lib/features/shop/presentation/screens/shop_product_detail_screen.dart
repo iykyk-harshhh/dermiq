@@ -135,7 +135,9 @@ class _ShopProductDetailScreenState
                         ),
                         child: Center(
                           child: Text(
-                            _p.brand[0].toUpperCase(),
+                            _p.brand.isNotEmpty
+                                ? _p.brand[0].toUpperCase()
+                                : '?',
                             style: AppTypography.h1.copyWith(
                               color: Colors.white,
                               fontSize: 44,

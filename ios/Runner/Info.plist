@@ -7,6 +7,20 @@
 		<string>DermIQ uses the camera to scan product barcodes and read ingredient labels.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>DermIQ needs photo access to analyze ingredient labels from your gallery.</string>
+		<!-- Google Sign-In: iOS OAuth client (from GoogleService-Info.plist) -->
+		<key>GIDClientID</key>
+		<string>411761891980-8fjirhqk1740u9us63ct1tver2gqelda.apps.googleusercontent.com</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.411761891980-8fjirhqk1740u9us63ct1tver2gqelda</string>
+				</array>
+			</dict>
+		</array>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>

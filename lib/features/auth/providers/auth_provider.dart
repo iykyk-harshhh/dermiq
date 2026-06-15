@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -22,9 +23,11 @@ import '../../../core/services/preferences_service.dart';
 final authStateProvider = StateProvider<AppUser?>((ref) => null);
 
 final authProvider = Provider<AuthService>((ref) {
-  return FirebaseBootstrap.isAvailable
-      ? FirebaseAuthService(ref)
-      : MockAuthService(ref);
+  if (FirebaseBootstrap.isAvailable) return FirebaseAuthService(ref);
+  // Firebase unavailable: in debug use the offline mock for development, but in
+  // a release build NEVER silently fall back to passwordless mock auth — that
+  // would let anyone in if Firebase init failed. Surface a clear error instead.
+  return kReleaseMode ? UnavailableAuthService(ref) : MockAuthService(ref);
 });
 
 /// The current user (or null). Convenience read-only selector.
@@ -72,6 +75,11 @@ abstract class AuthService {
       {String? displayName, String? gender});
   Future<void> signInWithGoogle();
   Future<void> signInAsGuest();
+
+  /// Sends a password-reset email via Firebase. The user completes the reset
+  /// through the link Firebase emails them.
+  Future<void> sendPasswordReset(String email);
+
   Future<void> signOut();
 
   /// Permanently deletes the account: Firestore data + Firebase user + local
@@ -147,6 +155,11 @@ class FirebaseAuthService implements AuthService {
   }
 
   @override
+  Future<void> sendPasswordReset(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
+  @override
   Future<void> signOut() async {
     await GoogleSignIn().signOut();
     await _auth.signOut();
@@ -212,6 +225,11 @@ class MockAuthService implements AuthService {
   }
 
   @override
+  Future<void> sendPasswordReset(String email) async {
+    await Future.delayed(const Duration(milliseconds: 600)); // no-op in mock mode
+  }
+
+  @override
   Future<void> signOut() async => _set(null);
 
   @override
@@ -221,4 +239,45 @@ class MockAuthService implements AuthService {
     _ref.read(onboardingSeenProvider.notifier).state = false;
     _set(null);
   }
+}
+
+// ── Unavailable (release build where Firebase failed to initialize) ───────────
+//
+// Guards against the silent auth-bypass: rather than logging anyone in via the
+// mock, every action throws a clear error so the failure is visible instead of
+// granting unauthenticated access.
+
+class UnavailableAuthService implements AuthService {
+  UnavailableAuthService(this._ref);
+  final Ref _ref;
+
+  Never _fail() => throw StateError(
+      'Authentication is unavailable — please check your connection and '
+      'restart the app.');
+
+  @override
+  AppUser? get currentUser => _ref.read(authStateProvider);
+
+  @override
+  Future<void> signInWithEmail(String email, String password) async => _fail();
+
+  @override
+  Future<void> signUpWithEmail(String email, String password,
+          {String? displayName, String? gender}) async =>
+      _fail();
+
+  @override
+  Future<void> signInWithGoogle() async => _fail();
+
+  @override
+  Future<void> signInAsGuest() async => _fail();
+
+  @override
+  Future<void> sendPasswordReset(String email) async => _fail();
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<void> deleteAccount() async => _fail();
 }

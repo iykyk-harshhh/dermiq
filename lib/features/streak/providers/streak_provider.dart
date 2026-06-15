@@ -34,18 +34,7 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
   Future<StreakState> _load() async {
     final now = _today();
 
-    // Pre-seed 43-day streak on first run so the UI is populated immediately.
-    final isFirstRun = !_prefs.containsKey(_kCurrent);
-    if (isFirstRun) {
-      final yesterday = now.subtract(const Duration(days: 1));
-      await _prefs.setInt(_kCurrent, 43);
-      await _prefs.setInt(_kGreen, 43);
-      await _prefs.setInt(_kBest, 43);
-      await _prefs.setString(_kLastDate, yesterday.toIso8601String());
-      await _prefs.setBool(_kLastAmDone, true);
-      await _prefs.setBool(_kLastPmDone, true);
-    }
-
+    // New users start at zero — streak builds from real routine activity.
     var current = _prefs.getInt(_kCurrent) ?? 0;
     var green = _prefs.getInt(_kGreen) ?? 0;
     final best = _prefs.getInt(_kBest) ?? 0;

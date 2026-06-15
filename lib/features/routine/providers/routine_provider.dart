@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/preferences_service.dart';
 import '../data/routine_models.dart';
 
 /// Owns the AM/PM routine step lists (editable in the builder), today's
@@ -66,13 +68,61 @@ class RoutineState {
 
 class RoutineNotifier extends Notifier<RoutineState> {
   @override
-  RoutineState build() => RoutineState(
+  RoutineState build() => _load();
+
+  // ── Persistence ────────────────────────────────────────────────────────────
+  //
+  // Today's per-step completion + the rolling history survive restarts (local
+  // storage). Completion auto-resets at the start of a new calendar day. Step
+  // definitions are seeded from the defaults each launch (custom-step authoring
+  // persistence needs icon serialization — tracked separately).
+
+  RoutineState _load() {
+    final raw = PreferencesService.routineJson;
+    if (raw == null || raw.isEmpty) return _defaults();
+    try {
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      final isToday = m['date'] == _todayKey();
+      final history = (m['history'] as List?)
+              ?.map((e) => RoutineDay.fromMap((e as Map).cast<String, dynamic>()))
+              .toList() ??
+          List.of(routineHistory);
+      return RoutineState(
         amSteps: List.of(amSteps),
         pmSteps: List.of(pmSteps),
-        amDoneIds: {},
-        pmDoneIds: {},
+        amDoneIds: isToday ? _idSet(m['amDoneIds']) : <String>{},
+        pmDoneIds: isToday ? _idSet(m['pmDoneIds']) : <String>{},
+        history: history,
+      );
+    } catch (_) {
+      return _defaults();
+    }
+  }
+
+  RoutineState _defaults() => RoutineState(
+        amSteps: List.of(amSteps),
+        pmSteps: List.of(pmSteps),
+        amDoneIds: const {},
+        pmDoneIds: const {},
         history: List.of(routineHistory),
       );
+
+  static Set<String> _idSet(dynamic v) =>
+      (v as List?)?.map((e) => e as String).toSet() ?? <String>{};
+
+  static String _todayKey() {
+    final n = DateTime.now();
+    return '${n.year}-${n.month}-${n.day}';
+  }
+
+  void _persist() {
+    PreferencesService.setRoutineJson(jsonEncode({
+      'date': _todayKey(),
+      'amDoneIds': state.amDoneIds.toList(),
+      'pmDoneIds': state.pmDoneIds.toList(),
+      'history': state.history.map((d) => d.toMap()).toList(),
+    }));
+  }
 
   void toggleStep(bool isAm, String id) {
     final done = {...state.doneIdsFor(isAm)};
@@ -80,6 +130,7 @@ class RoutineNotifier extends Notifier<RoutineState> {
     state = isAm
         ? state.copyWith(amDoneIds: done)
         : state.copyWith(pmDoneIds: done);
+    _persist();
   }
 
   /// Marks today's routine (AM or PM) complete in the history.
@@ -93,6 +144,7 @@ class RoutineNotifier extends Notifier<RoutineState> {
       t.score,
     );
     state = state.copyWith(history: [updated, ...state.history.skip(1)]);
+    _persist();
   }
 
   // ── Builder edits ──────────────────────────────────────────────────────────

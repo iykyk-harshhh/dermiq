@@ -10,8 +10,9 @@ void main() {
     final p = c.read(profileProvider);
     expect(p.completionPercent, 0);
     expect(p.isComplete, isFalse);
-    expect(p.name, 'Sarah Johnson');
-    expect(p.initial, 'S');
+    expect(p.name, 'Guest');
+    expect(p.email, '');
+    expect(p.initial, 'G');
   });
 
   test('completion reaches 100% as the quiz is filled', () {

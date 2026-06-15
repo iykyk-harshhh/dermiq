@@ -41,7 +41,9 @@ class RoutineScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final streak = _computeStreak();
-    final today = routineHistory.first;
+    final today = routineHistory.isNotEmpty
+        ? routineHistory.first
+        : const RoutineDay('Today', false, false, 0);
     final last7 = routineHistory.take(7).toList();
     final amTotal = amSteps.fold(0, (s, e) => s + e.durationMin);
     final pmTotal = pmSteps.fold(0, (s, e) => s + e.durationMin);

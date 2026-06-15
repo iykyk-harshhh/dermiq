@@ -35,7 +35,7 @@ class UserProfile {
     required this.hairTreatments,
   });
 
-  String get initial => name.isNotEmpty ? name[0].toUpperCase() : 'S';
+  String get initial => name.isNotEmpty ? name[0].toUpperCase() : 'U';
 
   /// Profile completion 0–100 across the six core attributes.
   int get completionPercent {
@@ -59,8 +59,8 @@ final profileProvider = Provider<UserProfile>((ref) {
   final quiz = ref.watch(quizProvider);
 
   return UserProfile(
-    name: user?.displayName ?? 'Sarah Johnson',
-    email: user?.email ?? 'sarah.johnson@email.com',
+    name: user?.displayName ?? 'Guest',
+    email: user?.email ?? '',
     photoUrl: null,
     skinType: quiz.skinType,
     fitzpatrick: quiz.fitzpatrick,

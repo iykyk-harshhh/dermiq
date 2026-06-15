@@ -1,12 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/firebase/analytics_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../shelf/data/shelf_models.dart';
 import '../../shelf/providers/shelf_provider.dart';
+import '../data/order_repository.dart';
 import '../data/shop_models.dart';
 
 class OrderNotifier extends Notifier<List<Order>> {
+  OrderRepository get _repo => ref.read(orderRepositoryProvider);
+  String? get _uid => ref.read(authStateProvider)?.id;
+
   @override
-  List<Order> build() => [];
+  List<Order> build() {
+    // Stream order history from Firestore when signed in (survives restart);
+    // otherwise fall back to an in-memory session list.
+    final uid = ref.watch(authStateProvider)?.id;
+    if (uid != null && _repo.isOnline) {
+      final sub = _repo.watch(uid).listen((orders) => state = orders);
+      ref.onDispose(sub.cancel);
+    }
+    return [];
+  }
 
   /// Places a new order, prepends it to the list, and returns the placed [Order].
   Order placeOrder({
@@ -33,6 +47,9 @@ class OrderNotifier extends Notifier<List<Order>> {
       status: OrderStatus.placed,
     );
     state = [order, ...state];
+    // Persist to Firestore (no-op offline; the stream reconciles when online).
+    final uid = _uid;
+    if (uid != null) _repo.save(uid, order);
     // Analytics — Orders (no-op until Firebase is configured).
     ref.read(analyticsServiceProvider).logEvent('order_placed', {
       'total': total,
@@ -49,6 +66,8 @@ class OrderNotifier extends Notifier<List<Order>> {
     if (s == OrderStatus.delivered || s == OrderStatus.cancelled) return;
     state[idx].status = OrderStatus.cancelled;
     state = [...state];
+    final uid = _uid;
+    if (uid != null) _repo.updateStatus(uid, orderId, OrderStatus.cancelled);
   }
 
   /// Marks an order delivered and **auto-adds its products to My Shelf**
@@ -63,6 +82,9 @@ class OrderNotifier extends Notifier<List<Order>> {
 
     state[idx].status = OrderStatus.delivered; // status is mutable
     state = [...state]; // new reference so watchers rebuild
+
+    final uid = _uid;
+    if (uid != null) _repo.updateStatus(uid, orderId, OrderStatus.delivered);
 
     final shelf = ref.read(shelfProvider.notifier);
     final now = DateTime.now();

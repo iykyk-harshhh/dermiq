@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../data/chat_service.dart';
 
-class ChatScreen extends StatefulWidget {
+class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final _messages = <_Message>[
@@ -42,14 +44,25 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _scrollToBottom();
 
-    // Simulate AI response
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Real assistant via the Claude-backed Cloud Function. Falls back to the
+    // built-in keyword replies if the backend isn't reachable (offline / not
+    // yet deployed) so the chat never dead-ends.
+    String reply;
+    try {
+      final history = [
+        for (final m in _messages)
+          (role: m.isAI ? 'assistant' : 'user', text: m.text),
+      ];
+      reply = await ref.read(chatServiceProvider).reply(history);
+    } catch (_) {
+      reply = _getAIResponse(text);
+    }
 
     if (!mounted) return;
     setState(() {
       _isTyping = false;
       _messages.add(_Message(
-        text: _getAIResponse(text),
+        text: reply,
         isAI: true,
         timestamp: DateTime.now(),
       ));
@@ -117,6 +130,28 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          // Medical-advice disclaimer.
+          Container(
+            width: double.infinity,
+            color: AppColors.primary.withValues(alpha: 0.06),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    size: 14, color: context.dColors.textSecondary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'AI guidance is educational, not medical advice. '
+                    'For persistent or severe concerns, see a dermatologist.',
+                    style: AppTypography.caption
+                        .copyWith(color: context.dColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Suggested questions
           if (_messages.length <= 1) ...[
             Padding(

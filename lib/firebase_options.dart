@@ -60,20 +60,20 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCoMATt_TxwTgTW0iD3-1-ejT6Fw759CiM',
-    appId: '1:411761891980:ios:fa4d2a6cd0b1d3f0e4b9a9',
+    appId: '1:411761891980:ios:922d155fbacfbccfe4b9a9',
     messagingSenderId: '411761891980',
     projectId: 'dermiq-83cfd',
     storageBucket: 'dermiq-83cfd.firebasestorage.app',
-    iosBundleId: 'com.example.dermiq',
+    iosBundleId: 'com.dermiq.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCoMATt_TxwTgTW0iD3-1-ejT6Fw759CiM',
-    appId: '1:411761891980:ios:fa4d2a6cd0b1d3f0e4b9a9',
+    appId: '1:411761891980:ios:922d155fbacfbccfe4b9a9',
     messagingSenderId: '411761891980',
     projectId: 'dermiq-83cfd',
     storageBucket: 'dermiq-83cfd.firebasestorage.app',
-    iosBundleId: 'com.example.dermiq',
+    iosBundleId: 'com.dermiq.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

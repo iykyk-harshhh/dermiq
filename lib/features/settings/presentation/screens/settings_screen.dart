@@ -28,8 +28,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider);
-    final name = user?.displayName ?? 'Sarah Johnson';
-    final email = user?.email ?? 'sarah.johnson@email.com';
+    final name = user?.displayName ?? 'Guest';
+    final email = user?.email ?? '';
 
     return Scaffold(
       backgroundColor: context.dColors.background,

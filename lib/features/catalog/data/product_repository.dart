@@ -67,6 +67,18 @@ class ProductRepository {
     await _shelfCol(uid)?.doc(product.id).set(product.toFirestore());
   }
 
+  /// One-time population of a new user's shelf from the catalog seed. Written
+  /// as a single batch so the shelf appears atomically.
+  Future<void> seedRemoteShelf(String uid, List<Product> products) async {
+    final col = _shelfCol(uid);
+    if (col == null || _db == null) return;
+    final batch = _db.batch();
+    for (final p in products) {
+      batch.set(col.doc(p.id), p.toFirestore());
+    }
+    await batch.commit();
+  }
+
   Future<void> removeFromShelf(String uid, String productId) async {
     await _shelfCol(uid)?.doc(productId).delete();
   }

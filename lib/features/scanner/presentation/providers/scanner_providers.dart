@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 import '../../data/datasources/ingredient_parser.dart';
 import '../../data/datasources/ocr_data_source.dart';
@@ -17,8 +18,19 @@ final ocrDataSourceProvider = Provider<OcrDataSource>((ref) {
   return ds;
 });
 
+final httpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return client;
+});
+
+/// Live barcode lookup via Open Beauty Facts, with the offline mock catalog as
+/// a fallback (network failures / unknown barcodes / demo codes).
 final productRemoteDataSourceProvider = Provider<ProductRemoteDataSource>(
-  (ref) => const MockProductRemoteDataSource(),
+  (ref) => OpenBeautyFactsDataSource(
+    ref.watch(httpClientProvider),
+    fallback: const MockProductRemoteDataSource(),
+  ),
 );
 
 final ingredientParserProvider =

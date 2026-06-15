@@ -30,9 +30,9 @@ class ScannedProductModel {
       name: (p['product_name'] as String?)?.trim().isNotEmpty == true
           ? p['product_name'] as String
           : 'Unknown product',
-      brand: (p['brands'] as String?)?.split(',').first.trim() ?? '',
+      brand: (p['brands'] as String?)?.split(',').firstOrNull?.trim() ?? '',
       category:
-          (p['categories'] as String?)?.split(',').last.trim() ?? 'Skincare',
+          (p['categories'] as String?)?.split(',').lastOrNull?.trim() ?? 'Skincare',
       imageUrl: p['image_url'] as String?,
       ingredientsText: (p['ingredients_text'] as String?) ?? '',
     );

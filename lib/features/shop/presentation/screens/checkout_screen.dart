@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/ios_notification.dart';
+import '../../data/payment_service.dart';
 import '../../data/shop_models.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
@@ -74,6 +75,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       country: _countryCtrl.text.trim(),
     );
 
+    // Online methods must be paid (and the signature verified) BEFORE the order
+    // is recorded. Cash on Delivery skips the gateway.
+    if (_selectedPayment != PaymentMethod.cod) {
+      final paid = await _runPayment(cart, address);
+      if (!paid) {
+        if (mounted) setState(() => _isPlacingOrder = false);
+        return;
+      }
+    }
+
     final order = ref.read(orderProvider.notifier).placeOrder(
           items: cart.items,
           subtotal: cart.subtotal,
@@ -98,6 +109,43 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       color: AppColors.success,
     );
     context.go('/order-success', extra: order);
+  }
+
+  /// Runs the secure Razorpay flow. Returns true only when payment succeeded
+  /// and was verified server-side. Shows a notification on failure.
+  Future<bool> _runPayment(CartState cart, Address address) async {
+    try {
+      final result = await ref.read(paymentServiceProvider).payForOrder(
+            amountPaise: (cart.total * 100).round(),
+            receipt: 'dq_${DateTime.now().millisecondsSinceEpoch}',
+            name: address.fullName,
+            email: address.email,
+            phone: address.phone,
+            description: '${cart.itemCount} item(s) · DermIQ',
+          );
+      if (result.isSuccess) return true;
+      if (!mounted) return false;
+      if (result.outcome != PaymentOutcome.cancelled) {
+        IosNotification.show(
+          context,
+          title: 'Payment Failed',
+          message: result.message ?? 'Your payment did not go through.',
+          icon: Icons.error_outline_rounded,
+          color: AppColors.error,
+        );
+      }
+      return false;
+    } catch (e) {
+      if (!mounted) return false;
+      IosNotification.show(
+        context,
+        title: 'Payment Unavailable',
+        message: 'Could not start payment. Please try again or use Cash on Delivery.',
+        icon: Icons.error_outline_rounded,
+        color: AppColors.error,
+      );
+      return false;
+    }
   }
 
   @override

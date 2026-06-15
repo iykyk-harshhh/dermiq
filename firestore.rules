@@ -27,6 +27,13 @@ service cloud.firestore {
     match /products/{productId} {
       allow read: if signedIn();
       allow write: if false;
+
+      // Reviews: any signed-in user can read; a user may only write the review
+      // document keyed by their own uid.
+      match /reviews/{uid} {
+        allow read: if signedIn();
+        allow write: if isOwner(uid);
+      }
     }
     match /ingredients/{ingredientId} {
       allow read: if signedIn();

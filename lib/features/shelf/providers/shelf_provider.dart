@@ -87,10 +87,31 @@ class ShelfState {
 }
 
 class ShelfNotifier extends Notifier<ShelfState> {
-  /// Seeded from the catalog for offline-first; mutations persist to Firestore
-  /// (`users/{uid}/shelf`) via [ProductRepository] when signed in.
+  bool _seeding = false;
+
+  /// Offline-first: starts from the catalog seed, then — when signed in with
+  /// Firebase available — streams the real shelf from `users/{uid}/shelf` so
+  /// additions/removals survive restarts. A brand-new user's empty shelf is
+  /// seeded from the catalog once.
   @override
-  ShelfState build() => ShelfState(products: List.of(catalogProducts));
+  ShelfState build() {
+    final uid = ref.watch(authStateProvider)?.id;
+    if (uid != null) {
+      final sub = _repo.watchShelf(uid).listen((products) {
+        if (products.isEmpty && !_seeding) {
+          _seeding = true;
+          _repo.seedRemoteShelf(uid, catalogProducts); // streams back once written
+          return;
+        }
+        if (products.isNotEmpty) {
+          _seeding = false;
+          state = state.copyWith(products: products);
+        }
+      });
+      ref.onDispose(sub.cancel);
+    }
+    return ShelfState(products: List.of(catalogProducts));
+  }
 
   ProductRepository get _repo => ref.read(productRepositoryProvider);
   String? get _uid => ref.read(authStateProvider)?.id;

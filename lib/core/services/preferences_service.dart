@@ -10,6 +10,8 @@ class PreferencesService {
   static const _kProfileComplete = 'profile_complete';
   static const _kHealthScore = 'health_score';
   static const _kSavedSpecialists = 'saved_specialists';
+  static const _kCart = 'cart_items';
+  static const _kRoutine = 'routine_state';
 
   static SharedPreferences? _prefs;
 
@@ -35,6 +37,17 @@ class PreferencesService {
       _prefs?.getStringList(_kSavedSpecialists) ?? const [];
   static Future<void> setSavedSpecialists(List<String> ids) async =>
       _prefs?.setStringList(_kSavedSpecialists, ids);
+
+  /// The shopping cart, persisted locally as a JSON string so it survives
+  /// app restarts. Null when nothing has been saved yet.
+  static String? get cartJson => _prefs?.getString(_kCart);
+  static Future<void> setCartJson(String v) async =>
+      _prefs?.setString(_kCart, v);
+
+  /// Routine progress (today's completion + history) as a JSON string.
+  static String? get routineJson => _prefs?.getString(_kRoutine);
+  static Future<void> setRoutineJson(String v) async =>
+      _prefs?.setString(_kRoutine, v);
 
   /// Clears per-session state on logout (keeps onboardingSeen so onboarding
   /// never reappears for a returning user — per the flow spec).

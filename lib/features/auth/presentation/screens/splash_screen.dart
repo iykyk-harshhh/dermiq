@@ -22,14 +22,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void initState() {
     super.initState();
 
-    _controller = VideoPlayerController.asset(
-      'assets/videos/splash.mp4',
-    )
-      ..initialize().then((_) {
-        setState(() {});
-        _controller.play();
-        _controller.setLooping(true);
-      });
+    _controller = VideoPlayerController.asset('assets/videos/splash.mp4');
+    _controller.initialize().then((_) {
+      if (!mounted) return;
+      setState(() {});
+      _controller.play();
+      _controller.setLooping(true);
+    }).catchError((_) {
+      // Asset/codec failure — fall back to the static branded backdrop so the
+      // very first screen never crashes or shows a blank void.
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -59,6 +62,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
+
+          // Branded backdrop — always painted, sits under the video. If the
+          // video fails to load it becomes the (intentional) background.
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF2F216F),
+                  Color(0xFF6C4BFF),
+                  Color(0xFF8A6DFF),
+                ],
+              ),
+            ),
+          ),
 
           if (_controller.value.isInitialized)
             FittedBox(

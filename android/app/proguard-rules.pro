@@ -25,5 +25,15 @@
 # ── Play Core (deferred components / split installs used by Flutter) ──────────
 -dontwarn com.google.android.play.core.**
 
+# ── Razorpay (payments) ──────────────────────────────────────────────────────
+# Razorpay uses reflection + annotations; without these R8 strips the checkout.
+-keep class com.razorpay.** { *; }
+-keep class proguard.annotation.** { *; }
+-keepattributes JavascriptInterface
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }
+-dontwarn com.razorpay.**
+-optimizations !method/inlining/*
+-keepclasseswithmembers class * { public void onPayment*(...); }
+
 # Keep annotations / generic signatures used for reflection.
 -keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
