@@ -12,6 +12,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../data/shop_models.dart';
 import '../../data/shop_seed.dart';
 import '../../providers/cart_provider.dart';
+import '../widgets/product_image.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ShopScreen
@@ -568,38 +569,49 @@ class _ShopProductCard extends StatelessWidget {
               flex: 11,
               child: Stack(
                 children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          product.accentColor.withValues(alpha: 0.15),
-                          product.accentColor.withValues(alpha: 0.35),
-                        ],
-                      ),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: context.dColors.surface,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: product.accentColor.withValues(alpha: 0.2),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.white,
+                      child: ProductImage(
+                        product: product,
+                        fallback: Container(
+                          width: double.infinity,
+                          height: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                product.accentColor.withValues(alpha: 0.15),
+                                product.accentColor.withValues(alpha: 0.35),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            product.brand[0].toUpperCase(),
-                            style: AppTypography.h3.copyWith(
-                              color: product.accentColor,
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: context.dColors.surface,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: product.accentColor.withValues(alpha: 0.2),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  product.brand.isNotEmpty
+                                      ? product.brand[0].toUpperCase()
+                                      : '?',
+                                  style: AppTypography.h3.copyWith(
+                                    color: product.accentColor,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),

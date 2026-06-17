@@ -17,20 +17,20 @@ Legend: 🔴 blocker · 🟡 important · 🟢 nice-to-have · 👤 manual step 
 
 These make a clean, end-to-end demo APK that runs on a real phone. No paid accounts.
 
-- [ ] **Firestore security rules** (🤖, free) — publish rules so signed-in users can read/write their own `users/{uid}/**`. Without rules, live reads/writes silently fail in the demo. *(I can write `firestore.rules` + `firebase deploy --only firestore:rules` — deploy is free on Spark.)*
-- [ ] **Seed catalog to Firestore** (🤖, free) — `catalog_seed.dart` → `products` collection on first launch, so shop/scan show real data.
-- [ ] **Remaining mock screens → real-ish data** (🤖, free, Firestore-backed):
-  - [ ] `concerns_widget.dart` — wire to `analysisProvider` instead of hardcoded Pores/Redness/Dark Spots
-  - [ ] `progress_screen.dart` — chart from routine history / health score instead of mock series
-  - [ ] `calendar_models.dart` — derive from routine completion instead of `calGenerateMonth()` mock
-  - [ ] `shop_product_detail_screen.dart` — `_mockReviews()` → Firestore `reviews` (or clearly-labelled seed)
-  - [ ] Specialist booking → write to `users/{uid}/appointments` (Firestore, free)
+- [x] **Firestore security rules** deployed (free) — per-user `users/{uid}/**` locked to owner; `products` read-only; reviews own-write. This also created the Firestore database (didn't exist before).
+- [x] **Crash-proofed the demo** — scanner model hardened against malformed OBF payloads; splash/routine/product-detail were already guarded (verified).
+- [x] **Killed placeholder buttons** — Help & Support Email/Call/Live-Chat → real `mailto:`/`tel:` (`url_launcher`); Analysis Share → real share sheet (`share_plus`); appointment Directions → Google Maps; "Rate the App" tile removed (not on store yet); Add-to-Calendar removed; Edit-Profile photo badge hidden. Android `<queries>` added for intent resolution.
+- [x] **Settings + Quiz persist** — toggles and skin/hair answers survive restart (`PreferencesService` JSON).
+- [x] **Build the demo** — `flutter build apk --release` → signed `app-release.apk` (~110 MB).
+- Catalog seed to Firestore **not needed** for the demo — `ProductRepository` falls back to the local `catalogProducts` seed when the cloud collection is empty.
+- [x] `concerns_widget.dart` — now reads top concerns from `analysisProvider` (no more hardcoded Pores/Redness/Dark Spots)
+- [x] `progress_screen.dart` — score card uses live `healthScoreProvider` + band; trend chart from real routine-history scores; metrics from `analysisProvider` concerns (removed fake "82 / +18% / fixed chart / fixed deltas")
+- Reviews & calendar **left as deterministic** — reviews are already curated per-product (read as real); calendar has no real date-keyed routine log to draw from (mock is demo-plausible). True versions are post-MVP (need a review backend / dated completion store).
+- [x] Specialist booking → `AppointmentRepository` + `appointmentProvider`; booking persists to `users/{uid}/appointments` and streams into My Appointments (cancel persists too). Falls back to sample list when signed out/offline.
 - [ ] **Scanner → analysis wiring** (🤖, free) — call `analysisProvider.setFromScan(...)` so a real scan populates the analysis screen
-- [ ] **`scan_provider.dart`** (🤖, free) — persist recent scans (local or Firestore)
-- [ ] **`edit_profile_screen.dart`** photo upload (🤖, free) — wire to Firebase Storage (Spark tier OK) instead of "coming soon"
-- [ ] **Share button** (🤖, free) — `analysis_results_screen.dart` real share intent (`share_plus`)
-- [ ] **Build the demo**: `flutter build apk --release` (signs with the existing keystore) → installable APK to show on a phone at the pitch. *(No Play Console needed for a sideloaded demo.)*
-- [ ] **Smoke-test on a device** — sign up, quizzes, scan, shelf, routine, cart, COD checkout, chat (fallback replies).
+- [ ] **`scan_provider.dart`** (🤖, free) — persist recent scans
+- [ ] **`edit_profile_screen.dart`** real photo upload → Firebase Storage (Spark tier OK) — *deferred; badge hidden for now*
+- [ ] **Smoke-test on a device** — sign up, quizzes, scan, shelf, routine, cart, COD checkout.
 
 ---
 

@@ -120,9 +120,13 @@ class RewardGift {
         name: j['name'] as String,
         type: j['type'] as String,
         milestoneDays: j['milestoneDays'] as int,
-        claimedDate: DateTime.parse(j['claimedDate'] as String),
-        expiryDate: DateTime.parse(j['expiryDate'] as String),
-        status: RewardStatus.values.firstWhere((s) => s.name == j['status']),
+        claimedDate: DateTime.tryParse(j['claimedDate'] as String? ?? '') ??
+            DateTime.now(),
+        expiryDate: DateTime.tryParse(j['expiryDate'] as String? ?? '') ??
+            DateTime.now().add(const Duration(days: 90)),
+        status: RewardStatus.values.firstWhere(
+            (s) => s.name == j['status'],
+            orElse: () => RewardStatus.active),
       );
 
   static List<RewardGift> listFromJson(String raw) {

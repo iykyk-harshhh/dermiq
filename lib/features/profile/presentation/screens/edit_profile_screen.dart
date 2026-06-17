@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/widgets.dart';
@@ -84,26 +83,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ),
                   ),
                 ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: GestureDetector(
-                    onTap: () => AppSnackbar.show(
-                        context, 'Photo upload coming soon'),
-                    child: Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: context.dColors.background, width: 2),
-                      ),
-                      child: const Icon(Icons.camera_alt_rounded,
-                          size: 14, color: Colors.white),
-                    ),
-                  ),
-                ),
+                // Photo upload badge hidden until Firebase Storage upload is
+                // wired (post-MVP) — avoids a dead "coming soon" affordance.
               ],
             ),
           ),

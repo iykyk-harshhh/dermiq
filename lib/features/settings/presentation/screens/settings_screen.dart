@@ -142,13 +142,10 @@ class SettingsScreen extends ConsumerWidget {
             ),
             AppSettingsTile(
               icon: Icons.info_outline_rounded, iconColor: AppColors.primary,
-              label: 'About DermIQ', onTap: () => context.push('/settings/about'),
+              label: 'About DermIQ', divider: false,
+              onTap: () => context.push('/settings/about'),
             ),
-            AppSettingsTile(
-              icon: Icons.star_outline_rounded, iconColor: const Color(0xFFF59E0B),
-              label: 'Rate the App', divider: false,
-              onTap: () => AppSnackbar.show(context, 'Thanks! This would open the app store.'),
-            ),
+            // "Rate the App" removed until the app is live on the store.
           ]).animate().fadeIn(delay: 200.ms, duration: 350.ms).slideY(begin: 0.03),
 
           const SizedBox(height: 20),

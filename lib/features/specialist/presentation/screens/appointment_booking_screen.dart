@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/specialist_models.dart';
+import '../../providers/appointment_provider.dart';
 
-class AppointmentBookingScreen extends StatefulWidget {
+class AppointmentBookingScreen extends ConsumerStatefulWidget {
   final String specialistId;
   const AppointmentBookingScreen({super.key, required this.specialistId});
 
   @override
-  State<AppointmentBookingScreen> createState() => _AppointmentBookingScreenState();
+  ConsumerState<AppointmentBookingScreen> createState() => _AppointmentBookingScreenState();
 }
 
-class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
+class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScreen> {
   String? _selectedTime;
   int _selectedDay = 0;
   int _consultType = 0;
@@ -53,6 +55,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
       durationMin: consultDuration(type),
       fee: s.fee,
     );
+    // Persist the booking (Firestore when signed in) before showing the
+    // confirmation — so it appears under My Appointments and survives restart.
+    ref.read(appointmentProvider.notifier).book(draft);
     context.push('/specialist/${s.id}/confirmation', extra: draft);
   }
 

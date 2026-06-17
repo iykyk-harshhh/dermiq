@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/specialist_models.dart';
+import '../../providers/appointment_provider.dart';
 
-class MyAppointmentsScreen extends StatefulWidget {
+class MyAppointmentsScreen extends ConsumerStatefulWidget {
   const MyAppointmentsScreen({super.key});
 
   @override
-  State<MyAppointmentsScreen> createState() => _MyAppointmentsScreenState();
+  ConsumerState<MyAppointmentsScreen> createState() => _MyAppointmentsScreenState();
 }
 
-class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
+class _MyAppointmentsScreenState extends ConsumerState<MyAppointmentsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
-  late List<Appointment> _appointments;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
-    _appointments = List.of(myAppointmentsMock);
     _tab.addListener(() => setState(() {}));
   }
 
@@ -33,25 +33,8 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
     super.dispose();
   }
 
-  List<Appointment> _byStatus(AppointmentStatus status) =>
-      _appointments.where((a) => a.status == status).toList();
-
-  void _setCancelled(String id) {
-    setState(() {
-      final i = _appointments.indexWhere((a) => a.id == id);
-      if (i == -1) return;
-      final appt = _appointments[i];
-      _appointments[i] = Appointment(
-        id: appt.id,
-        specialistId: appt.specialistId,
-        dateLabel: appt.dateLabel,
-        time: appt.time,
-        consultType: appt.consultType,
-        durationMin: appt.durationMin,
-        status: AppointmentStatus.cancelled,
-      );
-    });
-  }
+  void _setCancelled(String id) =>
+      ref.read(appointmentProvider.notifier).cancel(id);
 
   /// Open full details; if the user cancels from there, reflect it here.
   Future<void> _open(Appointment a) async {
@@ -90,9 +73,10 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final upcoming = _byStatus(AppointmentStatus.upcoming);
-    final completed = _byStatus(AppointmentStatus.completed);
-    final cancelled = _byStatus(AppointmentStatus.cancelled);
+    final all = ref.watch(appointmentProvider);
+    final upcoming = all.where((a) => a.status == AppointmentStatus.upcoming).toList();
+    final completed = all.where((a) => a.status == AppointmentStatus.completed).toList();
+    final cancelled = all.where((a) => a.status == AppointmentStatus.cancelled).toList();
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -470,9 +454,13 @@ class _ActionBtn extends StatelessWidget {
           children: [
             Icon(icon, size: 15, color: filled ? Colors.white : color),
             const SizedBox(width: 6),
-            Text(label,
-                style: AppTypography.buttonSmall.copyWith(
-                    color: filled ? Colors.white : color)),
+            Flexible(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.buttonSmall.copyWith(
+                      color: filled ? Colors.white : color)),
+            ),
           ],
         ),
       ),

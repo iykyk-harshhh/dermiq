@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
@@ -62,15 +63,11 @@ class _AnalysisResultsScreenState extends ConsumerState<AnalysisResultsScreen>
               IconButton(
                 icon: const Icon(Icons.ios_share_rounded),
                 color: context.dColors.textPrimary,
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Sharing your skin analysis…',
-                        style: AppTypography.bodySmall.copyWith(color: Colors.white)),
-                    backgroundColor: AppColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
+                onPressed: () => Share.share(
+                  'My DermIQ skin health score is '
+                      '${result.overallScore}/100 🌿 '
+                      'Analyzing my skin with DermIQ — smart skincare, just for me.',
+                  subject: 'My DermIQ skin analysis',
                 ),
               ),
             ],

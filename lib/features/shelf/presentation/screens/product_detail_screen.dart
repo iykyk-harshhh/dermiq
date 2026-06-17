@@ -223,6 +223,8 @@ class _HeroAppBar extends StatelessWidget {
                                   ),
                                   child: Text(
                                     product.category,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: AppTypography.caption.copyWith(
                                       color: Colors.white.withValues(alpha: 0.9),
                                       fontWeight: FontWeight.w600,
@@ -238,6 +240,8 @@ class _HeroAppBar extends StatelessWidget {
                                 ),
                                 Text(
                                   product.brand,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: AppTypography.bodySmall.copyWith(
                                     color: Colors.white.withValues(alpha: 0.7),
                                   ),

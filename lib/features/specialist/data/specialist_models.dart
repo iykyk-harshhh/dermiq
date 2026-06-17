@@ -204,6 +204,41 @@ class Appointment {
   });
 
   Specialist get specialist => lookupSpecialist(specialistId);
+
+  Appointment copyWith({AppointmentStatus? status}) => Appointment(
+        id: id,
+        specialistId: specialistId,
+        dateLabel: dateLabel,
+        time: time,
+        consultType: consultType,
+        durationMin: durationMin,
+        status: status ?? this.status,
+      );
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'specialistId': specialistId,
+        'dateLabel': dateLabel,
+        'time': time,
+        'consultType': consultType,
+        'durationMin': durationMin,
+        'status': status.name,
+        // Sort key — booking order (newest first); stored as epoch ms.
+        'createdAt': DateTime.now().millisecondsSinceEpoch,
+      };
+
+  factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
+        id: m['id'] as String,
+        specialistId: m['specialistId'] as String? ?? '',
+        dateLabel: m['dateLabel'] as String? ?? '',
+        time: m['time'] as String? ?? '',
+        consultType: m['consultType'] as String? ?? '',
+        durationMin: (m['durationMin'] as num?)?.toInt() ?? 30,
+        status: AppointmentStatus.values.firstWhere(
+          (s) => s.name == m['status'],
+          orElse: () => AppointmentStatus.upcoming,
+        ),
+      );
 }
 
 final myAppointmentsMock = <Appointment>[

@@ -12,6 +12,9 @@ class PreferencesService {
   static const _kSavedSpecialists = 'saved_specialists';
   static const _kCart = 'cart_items';
   static const _kRoutine = 'routine_state';
+  static const _kSettings = 'app_settings';
+  static const _kQuiz = 'quiz_state';
+  static const _kRoutineLog = 'routine_log';
 
   static SharedPreferences? _prefs;
 
@@ -48,6 +51,21 @@ class PreferencesService {
   static String? get routineJson => _prefs?.getString(_kRoutine);
   static Future<void> setRoutineJson(String v) async =>
       _prefs?.setString(_kRoutine, v);
+
+  /// App settings (notification/privacy toggles, units) as a JSON string.
+  static String? get settingsJson => _prefs?.getString(_kSettings);
+  static Future<void> setSettingsJson(String v) async =>
+      _prefs?.setString(_kSettings, v);
+
+  /// Skin + hair quiz answers as a JSON string.
+  static String? get quizJson => _prefs?.getString(_kQuiz);
+  static Future<void> setQuizJson(String v) async =>
+      _prefs?.setString(_kQuiz, v);
+
+  /// Per-date routine completion log {`yyyy-mm-dd`: [amDone, pmDone]} as JSON.
+  static String? get routineLogJson => _prefs?.getString(_kRoutineLog);
+  static Future<void> setRoutineLogJson(String v) async =>
+      _prefs?.setString(_kRoutineLog, v);
 
   /// Clears per-session state on logout (keeps onboardingSeen so onboarding
   /// never reappears for a returning user — per the flow spec).

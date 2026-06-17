@@ -48,8 +48,8 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
     final rewards = rewardsRaw != null ? RewardGift.listFromJson(rewardsRaw) : <RewardGift>[];
 
     // Check if streak should break (missed yesterday).
-    if (lastDateStr != null) {
-      final lastDate = DateTime.parse(lastDateStr);
+    final lastDate = lastDateStr != null ? DateTime.tryParse(lastDateStr) : null;
+    if (lastDate != null) {
       final diff = now.difference(lastDate).inDays;
       if (diff >= 2) {
         // Gap of 2+ days means we missed at least one full day → red, reset.
@@ -119,9 +119,8 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
 
     final now = _today();
     final lastDateStr = _prefs.getString(_kLastDate);
-    final lastDate = lastDateStr != null
-        ? DateTime.parse(lastDateStr)
-        : now.subtract(const Duration(days: 1));
+    final lastDate = (lastDateStr != null ? DateTime.tryParse(lastDateStr) : null)
+        ?? now.subtract(const Duration(days: 1));
     final isNewDay = !lastDate.isAtSameMomentAs(now);
 
     final prevAm = _prefs.getBool(_kLastAmDone) ?? false;

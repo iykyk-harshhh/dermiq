@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/preferences_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  QUIZ STATE  — skin + hair profile
@@ -75,49 +77,103 @@ class QuizState {
         hairConcerns:   hairConcerns   ?? this.hairConcerns,
         hairTreatments: hairTreatments ?? this.hairTreatments,
       );
+
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'gender': gender,
+        'email': email,
+        'age': age,
+        'skinType': skinType,
+        'skinConcerns': skinConcerns,
+        'skinAllergies': skinAllergies,
+        'fitzpatrick': fitzpatrick,
+        'hairType': hairType,
+        'scalpType': scalpType,
+        'hairConcerns': hairConcerns,
+        'hairTreatments': hairTreatments,
+      };
+
+  factory QuizState.fromMap(Map<String, dynamic> m) {
+    List<String> list(String k) =>
+        (m[k] as List?)?.whereType<String>().toList() ?? const [];
+    return QuizState(
+      name: m['name'] as String?,
+      gender: m['gender'] as String?,
+      email: m['email'] as String?,
+      age: (m['age'] as num?)?.toInt(),
+      skinType: m['skinType'] as String?,
+      skinConcerns: list('skinConcerns'),
+      skinAllergies: list('skinAllergies'),
+      fitzpatrick: m['fitzpatrick'] as String?,
+      hairType: m['hairType'] as String?,
+      scalpType: m['scalpType'] as String?,
+      hairConcerns: list('hairConcerns'),
+      hairTreatments: list('hairTreatments'),
+    );
+  }
 }
 
 class QuizNotifier extends StateNotifier<QuizState> {
-  QuizNotifier() : super(const QuizState());
+  QuizNotifier() : super(_load());
 
-  void setName(String v)               => state = state.copyWith(name: v);
-  void setGender(String v)             => state = state.copyWith(gender: v);
-  void setEmail(String v)              => state = state.copyWith(email: v);
-  void setAge(int v)                   => state = state.copyWith(age: v);
-  void setSkinType(String v)           => state = state.copyWith(skinType: v);
-  void setSkinConcerns(List<String> v) => state = state.copyWith(skinConcerns: v);
-  void setSkinAllergies(List<String> v)=> state = state.copyWith(skinAllergies: v);
-  void setFitzpatrick(String v)        => state = state.copyWith(fitzpatrick: v);
-  void setHairType(String v)           => state = state.copyWith(hairType: v);
-  void setScalpType(String v)          => state = state.copyWith(scalpType: v);
-  void setHairConcerns(List<String> v) => state = state.copyWith(hairConcerns: v);
-  void setHairTreatments(List<String> v)=>state = state.copyWith(hairTreatments: v);
+  /// Loads persisted answers (synchronous — `PreferencesService` is ready at
+  /// startup) so the skin/hair profile survives restarts.
+  static QuizState _load() {
+    final raw = PreferencesService.quizJson;
+    if (raw == null || raw.isEmpty) return const QuizState();
+    try {
+      return QuizState.fromMap(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return const QuizState();
+    }
+  }
+
+  void _set(QuizState s) {
+    state = s;
+    PreferencesService.setQuizJson(jsonEncode(s.toMap()));
+  }
+
+  void setName(String v)               => _set(state.copyWith(name: v));
+  void setGender(String v)             => _set(state.copyWith(gender: v));
+  void setEmail(String v)              => _set(state.copyWith(email: v));
+  void setAge(int v)                   => _set(state.copyWith(age: v));
+  void setSkinType(String v)           => _set(state.copyWith(skinType: v));
+  void setSkinConcerns(List<String> v) => _set(state.copyWith(skinConcerns: v));
+  void setSkinAllergies(List<String> v)=> _set(state.copyWith(skinAllergies: v));
+  void setFitzpatrick(String v)        => _set(state.copyWith(fitzpatrick: v));
+  void setHairType(String v)           => _set(state.copyWith(hairType: v));
+  void setScalpType(String v)          => _set(state.copyWith(scalpType: v));
+  void setHairConcerns(List<String> v) => _set(state.copyWith(hairConcerns: v));
+  void setHairTreatments(List<String> v)=>_set(state.copyWith(hairTreatments: v));
 
   void toggleSkinConcern(String v) {
     final list = List<String>.from(state.skinConcerns);
     list.contains(v) ? list.remove(v) : list.add(v);
-    state = state.copyWith(skinConcerns: list);
+    _set(state.copyWith(skinConcerns: list));
   }
 
   void toggleSkinAllergy(String v) {
     final list = List<String>.from(state.skinAllergies);
     list.contains(v) ? list.remove(v) : list.add(v);
-    state = state.copyWith(skinAllergies: list);
+    _set(state.copyWith(skinAllergies: list));
   }
 
   void toggleHairConcern(String v) {
     final list = List<String>.from(state.hairConcerns);
     list.contains(v) ? list.remove(v) : list.add(v);
-    state = state.copyWith(hairConcerns: list);
+    _set(state.copyWith(hairConcerns: list));
   }
 
   void toggleHairTreatment(String v) {
     final list = List<String>.from(state.hairTreatments);
     list.contains(v) ? list.remove(v) : list.add(v);
-    state = state.copyWith(hairTreatments: list);
+    _set(state.copyWith(hairTreatments: list));
   }
 
-  void reset() => state = const QuizState();
+  void reset() {
+    state = const QuizState();
+    PreferencesService.setQuizJson(jsonEncode(const QuizState().toMap()));
+  }
 }
 
 final quizProvider =

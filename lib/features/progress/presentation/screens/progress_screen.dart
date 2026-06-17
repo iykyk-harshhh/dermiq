@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../../analysis/providers/analysis_provider.dart';
+import '../../../home/providers/health_score_provider.dart';
+import '../../../routine/providers/routine_provider.dart';
 
-class ProgressScreen extends StatefulWidget {
+class ProgressScreen extends ConsumerStatefulWidget {
   const ProgressScreen({super.key});
 
   @override
-  State<ProgressScreen> createState() => _ProgressScreenState();
+  ConsumerState<ProgressScreen> createState() => _ProgressScreenState();
 }
 
-class _ProgressScreenState extends State<ProgressScreen>
+class _ProgressScreenState extends ConsumerState<ProgressScreen>
     with SingleTickerProviderStateMixin {
   int _viewIndex = 1; // Week/Month/Year
   final _views = ['Week', 'Month', 'Year'];
@@ -26,9 +30,8 @@ class _ProgressScreenState extends State<ProgressScreen>
     super.initState();
     _ringCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
       ..forward();
-    _ring = Tween<double>(begin: 0, end: 0.82).animate(
-      CurvedAnimation(parent: _ringCtrl, curve: Curves.easeOutCubic),
-    );
+    // 0→1 reveal; the live score scales it in during build.
+    _ring = CurvedAnimation(parent: _ringCtrl, curve: Curves.easeOutCubic);
   }
 
   @override
@@ -39,6 +42,17 @@ class _ProgressScreenState extends State<ProgressScreen>
 
   @override
   Widget build(BuildContext context) {
+    final score = ref.watch(healthScoreProvider);
+    final band = scoreBand(score);
+    // Score trend from the rolling routine history (oldest → newest).
+    final trend = ref
+        .watch(routineProvider)
+        .history
+        .reversed
+        .map((d) => d.score)
+        .where((s) => s > 0)
+        .toList();
+    final concerns = ref.watch(analysisProvider).concerns;
     return Scaffold(
       backgroundColor: context.dColors.background,
       body: CustomScrollView(
@@ -95,13 +109,13 @@ class _ProgressScreenState extends State<ProgressScreen>
                   const SizedBox(height: 20),
 
                   // Score card
-                  _ScoreCard(ringAnimation: _ring)
+                  _ScoreCard(ringAnimation: _ring, score: score, band: band)
                       .animate().fadeIn(duration: 400.ms, delay: 80.ms).slideY(begin: 0.08),
 
                   const SizedBox(height: 20),
 
                   // Chart
-                  _ChartCard()
+                  _ChartCard(scores: trend)
                       .animate().fadeIn(duration: 400.ms, delay: 140.ms).slideY(begin: 0.08),
 
                   const SizedBox(height: 20),
@@ -111,7 +125,7 @@ class _ProgressScreenState extends State<ProgressScreen>
 
                   const SizedBox(height: 12),
 
-                  // Metrics grid
+                  // Metrics grid — current concern levels from the latest analysis.
                   GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,
@@ -119,11 +133,14 @@ class _ProgressScreenState extends State<ProgressScreen>
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
                     childAspectRatio: 1.45,
-                    children: const [
-                      _MetricCard(label: 'Spots', value: '-21%', positive: true, color: Color(0xFFFF8C6B)),
-                      _MetricCard(label: 'Wrinkles', value: '-12%', positive: true, color: Color(0xFF9B82D4)),
-                      _MetricCard(label: 'Texture', value: '+8%', positive: false, color: Color(0xFFFF9B6B)),
-                      _MetricCard(label: 'Redness', value: '-15%', positive: true, color: Color(0xFFFF6B7A)),
+                    children: [
+                      for (final c in concerns.take(4))
+                        _MetricCard(
+                          label: c.name,
+                          value: '${c.percent}%',
+                          severity: c.severity,
+                          color: c.color,
+                        ),
                     ],
                   ).animate().fadeIn(duration: 400.ms, delay: 240.ms),
 
@@ -166,10 +183,17 @@ class _ProgressScreenState extends State<ProgressScreen>
 
 class _ScoreCard extends StatelessWidget {
   final Animation<double> ringAnimation;
-  const _ScoreCard({required this.ringAnimation});
+  final int score;
+  final ({String label, int color}) band;
+  const _ScoreCard({
+    required this.ringAnimation,
+    required this.score,
+    required this.band,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final bandColor = Color(band.color);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -191,7 +215,7 @@ class _ScoreCard extends StatelessWidget {
                   builder: (_, _) => Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('${(82 * ringAnimation.value).round()}',
+                      Text('${(score * ringAnimation.value).round()}',
                           style: AppTypography.metricMedium
                               .copyWith(color: context.dColors.textPrimary, fontSize: 40)),
                       Padding(
@@ -207,23 +231,9 @@ class _ScoreCard extends StatelessWidget {
                   children: [
                     Container(
                         width: 8, height: 8,
-                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF22C55E))),
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: bandColor)),
                     const SizedBox(width: 6),
-                    Text('Great', style: AppTypography.caption.copyWith(color: const Color(0xFF22C55E))),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF22C55E).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text('+18% vs last month',
-                            style: AppTypography.caption.copyWith(color: const Color(0xFF22C55E)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                    ),
+                    Text(band.label, style: AppTypography.caption.copyWith(color: bandColor)),
                   ],
                 ),
               ],
@@ -237,7 +247,7 @@ class _ScoreCard extends StatelessWidget {
               height: 80,
               child: CustomPaint(
                   painter: _RingPainter(
-                      progress: ringAnimation.value,
+                      progress: (score / 100.0) * ringAnimation.value,
                       trackColor: context.dColors.borderLight)),
             ),
           ),
@@ -282,13 +292,23 @@ class _RingPainter extends CustomPainter {
 }
 
 class _ChartCard extends StatelessWidget {
+  final List<int> scores;
+  const _ChartCard({required this.scores});
+
   @override
   Widget build(BuildContext context) {
+    // Use the real score trend; fall back to a gentle placeholder if there's
+    // no routine history yet so the chart is never empty.
+    final data = scores.length >= 2
+        ? scores
+        : const [62, 66, 64, 70, 72, 75, 78, 82];
     final spots = [
-      FlSpot(0, 65), FlSpot(1, 68), FlSpot(2, 66), FlSpot(3, 72),
-      FlSpot(4, 70), FlSpot(5, 76), FlSpot(6, 79), FlSpot(7, 82),
+      for (var i = 0; i < data.length; i++) FlSpot(i.toDouble(), data[i].toDouble()),
     ];
-    final labels = ['Apr 15', 'Apr 22', 'Apr 29', 'May 6', 'May 13'];
+    final lastX = (data.length - 1).toDouble();
+    final loY = (data.reduce((a, b) => a < b ? a : b) - 8).clamp(0, 100).toDouble();
+    final hiY = (data.reduce((a, b) => a > b ? a : b) + 8).clamp(0, 100).toDouble();
+    final labels = ['Older', 'Recent'];
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
@@ -323,11 +343,13 @@ class _ChartCard extends StatelessWidget {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 2,
+                      interval: lastX,
                       getTitlesWidget: (v, _) {
-                        final i = v.toInt() ~/ 2;
-                        if (i < 0 || i >= labels.length) return const SizedBox.shrink();
-                        return Text(labels[i],
+                        final label = v == 0
+                            ? labels.first
+                            : (v == lastX ? labels.last : '');
+                        if (label.isEmpty) return const SizedBox.shrink();
+                        return Text(label,
                             style: AppTypography.caption.copyWith(
                                 color: context.dColors.textTertiary, fontSize: 10));
                       },
@@ -336,9 +358,9 @@ class _ChartCard extends StatelessWidget {
                 ),
                 borderData: FlBorderData(show: false),
                 minX: 0,
-                maxX: 7,
-                minY: 55,
-                maxY: 95,
+                maxX: lastX,
+                minY: loY,
+                maxY: hiY,
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
@@ -351,7 +373,7 @@ class _ChartCard extends StatelessWidget {
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (s, _, _, _) => FlDotCirclePainter(
-                        radius: s.x == 7 ? 5 : 0,
+                        radius: s.x == lastX ? 5 : 0,
                         color: AppColors.primary,
                         strokeColor: Colors.white,
                         strokeWidth: 2,
@@ -382,13 +404,13 @@ class _ChartCard extends StatelessWidget {
 class _MetricCard extends StatelessWidget {
   final String label;
   final String value;
-  final bool positive;
+  final String severity;
   final Color color;
 
   const _MetricCard({
     required this.label,
     required this.value,
-    required this.positive,
+    required this.severity,
     required this.color,
   });
 
@@ -415,11 +437,23 @@ class _MetricCard extends StatelessWidget {
             child: Icon(Icons.circle, color: color, size: 12),
           ),
           const SizedBox(height: 8),
-          Text(label, style: AppTypography.caption.copyWith(color: context.dColors.textSecondary)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(label,
+                    style: AppTypography.caption
+                        .copyWith(color: context.dColors.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Text(severity,
+                  style: AppTypography.caption.copyWith(color: color)),
+            ],
+          ),
           const SizedBox(height: 2),
           Text(value,
               style: AppTypography.labelLarge.copyWith(
-                color: positive ? const Color(0xFF22C55E) : AppColors.error,
+                color: context.dColors.textPrimary,
                 fontWeight: FontWeight.w700,
               )),
         ],

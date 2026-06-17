@@ -370,6 +370,8 @@ class _SpecCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text('Book',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTypography.buttonSmall.copyWith(color: Colors.white)),
                     ),
                     const SizedBox(height: 4),

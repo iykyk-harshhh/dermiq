@@ -632,6 +632,9 @@ class _CompatVerdictChip extends StatelessWidget {
   const _CompatVerdictChip({required this.scores});
 
   ({String label, Color color}) get _verdict {
+    if (scores.isEmpty) {
+      return (label: 'Unknown', color: const Color(0xFF94A3B8));
+    }
     final avg = scores.reduce((a, b) => a + b) / scores.length;
     if (avg >= 75) return (label: 'Compatible', color: const Color(0xFF22C55E));
     if (avg >= 50) return (label: 'Partially', color: const Color(0xFFF59E0B));

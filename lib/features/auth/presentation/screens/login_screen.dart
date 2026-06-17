@@ -55,21 +55,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
-    await ref.read(authProvider).signInWithEmail(_emailCtrl.text, _passCtrl.text);
-    if (!mounted) return;
-    setState(() => _loading = false);
-    context.go('/home');
+    try {
+      await ref
+          .read(authProvider)
+          .signInWithEmail(_emailCtrl.text.trim(), _passCtrl.text);
+      if (!mounted) return;
+      context.go('/home');
+    } catch (e) {
+      if (!mounted) return;
+      _showError(_authError(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   /// Continue with Google: existing user (quizzes done) → Home; a first-time
   /// Google user is routed through the skin/hair quizzes.
   Future<void> _googleSignIn() async {
     setState(() => _loading = true);
-    await ref.read(authProvider).signInWithGoogle();
-    if (!mounted) return;
-    setState(() => _loading = false);
-    context.go(
-      PreferencesService.profileComplete ? '/home' : '/quiz/skin-type',
+    try {
+      await ref.read(authProvider).signInWithGoogle();
+      if (!mounted) return;
+      if (ref.read(authStateProvider) == null) return; // cancelled
+      context.go(
+        PreferencesService.profileComplete ? '/home' : '/quiz/skin-type',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showError(_authError(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _authError(Object e) {
+    final s = e.toString().toLowerCase();
+    if (s.contains('user-not-found') || s.contains('wrong-password') ||
+        s.contains('invalid-credential')) {
+      return 'Incorrect email or password.';
+    }
+    if (s.contains('invalid-email')) return 'Please enter a valid email address.';
+    if (s.contains('user-disabled')) return 'This account has been disabled.';
+    if (s.contains('too-many-requests')) {
+      return 'Too many attempts — please wait a moment and try again.';
+    }
+    if (s.contains('operation-not-allowed')) {
+      return 'Email sign-in is temporarily unavailable. Please try Google.';
+    }
+    if (s.contains('network')) {
+      return 'Network error — check your connection and try again.';
+    }
+    return 'Could not sign you in. Please try again.';
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg,
+            style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 

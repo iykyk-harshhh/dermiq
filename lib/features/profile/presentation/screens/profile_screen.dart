@@ -227,12 +227,7 @@ class ProfileScreen extends ConsumerWidget {
                       subtitle: 'Track and view order history',
                       onTap: () => context.push('/orders'),
                     ),
-                    _MenuTile(
-                      icon: Icons.inventory_2_rounded,
-                      label: 'My Shelf',
-                      subtitle: 'Personal product tracker',
-                      onTap: () => context.push('/my-shelf'),
-                    ),
+                    // My Shelf moved to the Routine screen (under AM/PM).
                     _MenuTile(
                       icon: Icons.card_giftcard_rounded,
                       label: 'Gifts & Rewards',
@@ -262,12 +257,6 @@ class ProfileScreen extends ConsumerWidget {
                       label: 'Saved Specialists',
                       subtitle: 'Your bookmarked doctors',
                       onTap: () => context.push('/saved-specialists'),
-                    ),
-                    _MenuTile(
-                      icon: Icons.inventory_2_outlined,
-                      label: 'My Shelf',
-                      subtitle: 'Saved products & expiry',
-                      onTap: () => context.go('/shelf'),
                     ),
                     _MenuTile(
                       icon: Icons.settings_outlined,

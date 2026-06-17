@@ -257,7 +257,9 @@ class _CartItemTile extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
                 Text(product.brand,
-                    style: AppTypography.caption),
+                    style: AppTypography.caption,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
                 const SizedBox(height: AppConstants.sp8),
                 Row(
                   children: [

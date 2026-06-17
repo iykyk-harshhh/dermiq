@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../analysis/providers/analysis_provider.dart';
 
-class ConcernsWidget extends StatelessWidget {
+class ConcernsWidget extends ConsumerWidget {
   const ConcernsWidget({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const concerns = [
-      _Concern('Pores', 'Moderate', Color(0xFFFF8C6B)),
-      _Concern('Redness', 'Mild', Color(0xFFFF6B7A)),
-      _Concern('Dark Spots', 'Mild', Color(0xFF8B7355)),
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Top concerns from the latest analysis (seed until a real scan runs).
+    final concerns = ref.watch(analysisProvider).concerns.take(3).toList();
+    if (concerns.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Row(
       children: List.generate(concerns.length, (i) {
         return Expanded(
@@ -25,15 +27,8 @@ class ConcernsWidget extends StatelessWidget {
   }
 }
 
-class _Concern {
-  final String name;
-  final String severity;
-  final Color color;
-  const _Concern(this.name, this.severity, this.color);
-}
-
 class _ConcernCard extends StatelessWidget {
-  final _Concern concern;
+  final SkinConcern concern;
   const _ConcernCard({required this.concern});
 
   @override

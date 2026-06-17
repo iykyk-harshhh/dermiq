@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/preferences_service.dart';
+import '../data/routine_log.dart';
 import '../data/routine_models.dart';
 
 /// Owns the AM/PM routine step lists (editable in the builder), today's
@@ -124,6 +125,14 @@ class RoutineNotifier extends Notifier<RoutineState> {
     }));
   }
 
+  /// Mirror today's AM/PM completion into the calendar's per-date log so the
+  /// calendar colours update as routines are actually completed.
+  void _logToday() {
+    final am = state.allDone(true) || state.today.amDone;
+    final pm = state.allDone(false) || state.today.pmDone;
+    routineLogSet(DateTime.now(), am: am, pm: pm);
+  }
+
   void toggleStep(bool isAm, String id) {
     final done = {...state.doneIdsFor(isAm)};
     done.contains(id) ? done.remove(id) : done.add(id);
@@ -131,6 +140,7 @@ class RoutineNotifier extends Notifier<RoutineState> {
         ? state.copyWith(amDoneIds: done)
         : state.copyWith(pmDoneIds: done);
     _persist();
+    _logToday();
   }
 
   /// Marks today's routine (AM or PM) complete in the history.
@@ -145,6 +155,7 @@ class RoutineNotifier extends Notifier<RoutineState> {
     );
     state = state.copyWith(history: [updated, ...state.history.skip(1)]);
     _persist();
+    _logToday();
   }
 
   // ── Builder edits ──────────────────────────────────────────────────────────

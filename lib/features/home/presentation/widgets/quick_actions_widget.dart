@@ -59,6 +59,8 @@ class _ActionTile extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               action.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTypography.caption.copyWith(
                 color: action.color,
                 fontWeight: FontWeight.w600,

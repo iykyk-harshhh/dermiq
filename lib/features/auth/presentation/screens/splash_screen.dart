@@ -180,14 +180,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       height: 1.5,
-                      color: const Color(0xFFD9C9FF).withValues(alpha: 0.95),
+                      // Deep readable purple — the previous light lilac washed
+                      // out against the bright bottom of the splash.
+                      color: const Color(0xFF3F2E86),
                       shadows: [
                         Shadow(
-                          color: const Color(0xFF2F216F).withValues(alpha: 0.55),
-                          blurRadius: 14,
-                          offset: const Offset(0, 2),
+                          color: Colors.white.withValues(alpha: 0.6),
+                          blurRadius: 8,
+                          offset: const Offset(0, 1),
                         ),
                       ],
                     ),

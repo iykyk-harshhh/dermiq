@@ -73,27 +73,73 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       return;
     }
     setState(() => _loading = true);
-    await ref.read(authProvider).signUpWithEmail(
-      _emailCtrl.text,
-      _passCtrl.text,
-      displayName: _nameCtrl.text.trim(),
-      gender: _gender,
-    );
-    if (!mounted) return;
-    setState(() => _loading = false);
-    // New account → walk through the skin then hair quiz (shown once).
-    context.go('/quiz/skin-type');
+    try {
+      await ref.read(authProvider).signUpWithEmail(
+        _emailCtrl.text.trim(),
+        _passCtrl.text,
+        displayName: _nameCtrl.text.trim(),
+        gender: _gender,
+      );
+      if (!mounted) return;
+      // New account → walk through the skin then hair quiz (shown once).
+      context.go('/quiz/skin-type');
+    } catch (e) {
+      if (!mounted) return;
+      _showError(_authError(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   /// Google sign-up/in: a brand-new Google user is sent through the quizzes;
   /// a returning user (quizzes already done) lands on Home.
   Future<void> _googleSignIn() async {
     setState(() => _loading = true);
-    await ref.read(authProvider).signInWithGoogle();
-    if (!mounted) return;
-    setState(() => _loading = false);
-    context.go(
-      PreferencesService.profileComplete ? '/home' : '/quiz/skin-type',
+    try {
+      await ref.read(authProvider).signInWithGoogle();
+      if (!mounted) return;
+      // Null user (cancelled) leaves us signed-out — only route if signed in.
+      if (ref.read(authStateProvider) == null) return;
+      context.go(
+        PreferencesService.profileComplete ? '/home' : '/quiz/skin-type',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showError(_authError(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Maps a raw auth error to a friendly message without importing
+  /// firebase_auth into the UI (matches on the FirebaseAuthException code text).
+  String _authError(Object e) {
+    final s = e.toString().toLowerCase();
+    if (s.contains('email-already-in-use')) {
+      return 'That email already has an account — try signing in.';
+    }
+    if (s.contains('invalid-email')) return 'Please enter a valid email address.';
+    if (s.contains('weak-password')) {
+      return 'Password is too weak — use at least 8 characters.';
+    }
+    if (s.contains('operation-not-allowed')) {
+      return 'Email sign-up is temporarily unavailable. Please try Google.';
+    }
+    if (s.contains('network')) {
+      return 'Network error — check your connection and try again.';
+    }
+    return 'Could not create your account. Please try again.';
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg,
+            style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
@@ -228,17 +229,22 @@ class AppointmentDetailScreen extends StatelessWidget {
             icon: Icons.near_me_rounded,
             color: const Color(0xFF0EA5E9),
             filled: false,
-            onTap: () => AppSnackbar.show(
-                context, 'Opening directions to ${s.hospital}…'),
-          ),
-          const SizedBox(height: 12),
-          _Action(
-            label: 'Add to Calendar',
-            icon: Icons.calendar_month_rounded,
-            color: AppColors.primary,
-            filled: false,
-            onTap: () => AppSnackbar.show(context,
-                'Added to your calendar — ${appointment.dateLabel}, ${appointment.time}'),
+            onTap: () async {
+              final uri = Uri.parse(
+                  'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(s.hospital)}');
+              try {
+                if (!await launchUrl(uri,
+                    mode: LaunchMode.externalApplication)) {
+                  if (context.mounted) {
+                    AppSnackbar.show(context, 'Could not open maps.');
+                  }
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  AppSnackbar.show(context, 'Could not open maps.');
+                }
+              }
+            },
           ),
         ],
       ),

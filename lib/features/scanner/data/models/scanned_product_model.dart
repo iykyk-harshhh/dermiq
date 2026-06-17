@@ -25,16 +25,19 @@ class ScannedProductModel {
   /// (`world.openbeautyfacts.org/api/v2/product/{barcode}.json`).
   factory ScannedProductModel.fromOpenBeautyFacts(Map<String, dynamic> json) {
     final p = (json['product'] as Map<String, dynamic>?) ?? const {};
+
+    // OBF fields are usually strings but can be missing or another type; read
+    // defensively so a malformed payload never crashes the scanner.
+    String str(dynamic v) => v is String ? v : '';
+    final name = str(p['product_name']).trim();
+
     return ScannedProductModel(
       barcode: json['code']?.toString() ?? '',
-      name: (p['product_name'] as String?)?.trim().isNotEmpty == true
-          ? p['product_name'] as String
-          : 'Unknown product',
-      brand: (p['brands'] as String?)?.split(',').firstOrNull?.trim() ?? '',
-      category:
-          (p['categories'] as String?)?.split(',').lastOrNull?.trim() ?? 'Skincare',
-      imageUrl: p['image_url'] as String?,
-      ingredientsText: (p['ingredients_text'] as String?) ?? '',
+      name: name.isNotEmpty ? name : 'Unknown product',
+      brand: str(p['brands']).split(',').firstOrNull?.trim() ?? '',
+      category: str(p['categories']).split(',').lastOrNull?.trim() ?? 'Skincare',
+      imageUrl: p['image_url'] is String ? p['image_url'] as String : null,
+      ingredientsText: str(p['ingredients_text']),
     );
   }
 

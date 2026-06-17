@@ -1,9 +1,12 @@
+import '../../routine/data/routine_log.dart';
+
 /// A single day in the calendar with routine-completion data.
 class CalendarDay {
   final DateTime date;
   final bool amDone;
   final bool pmDone;
   final bool isFuture;
+  final bool hasData; // true if this day has a real completion log entry
   final int? skinScore; // optional skin check-in score
 
   const CalendarDay({
@@ -11,12 +14,15 @@ class CalendarDay {
     required this.amDone,
     required this.pmDone,
     required this.isFuture,
+    this.hasData = false,
     this.skinScore,
   });
 
   bool get bothDone => amDone && pmDone;
   bool get anyDone => amDone || pmDone;
-  bool get missed => !isFuture && !amDone && !pmDone;
+  // Red only for past days we actually have data for and nothing was done —
+  // days with no logged activity stay neutral (WHOOP-style).
+  bool get missed => !isFuture && hasData && !amDone && !pmDone;
   bool get hasCheckIn => skinScore != null;
 }
 
@@ -50,11 +56,13 @@ int calLeadingBlanks(DateTime month) {
 int calDaysInMonth(DateTime month) =>
     DateTime(month.year, month.month + 1, 0).day;
 
-// ── Deterministic mock data ───────────────────────────────────────────────────
+// ── Real per-date data (from the routine completion log) ──────────────────────
 
-/// Generates routine-completion data for [month]. Past days follow a
-/// deterministic pattern (~80% AM, ~70% PM); future days are empty.
-List<CalendarDay> calGenerateMonth(DateTime month) {
+/// Builds the calendar for [month] from the real routine-completion log
+/// (see `routine_log.dart`). Days with no logged activity are left neutral
+/// (no colour); logged days are coloured green/yellow/red by completion.
+List<CalendarDay> calGenerateMonth(DateTime month, {Map<String, List<bool>>? log}) {
+  final data = log ?? routineLogLoad();
   final days = calDaysInMonth(month);
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -63,36 +71,26 @@ List<CalendarDay> calGenerateMonth(DateTime month) {
   for (var d = 1; d <= days; d++) {
     final date = DateTime(month.year, month.month, d);
     final isFuture = date.isAfter(today);
-
-    var am = false, pm = false;
-    int? score;
-    if (!isFuture) {
-      final seed = (d * 7) % 10;
-      am = seed != 3 && seed != 8;             // skip a couple AM days
-      pm = seed != 1 && seed != 6 && seed != 8; // skip a few PM days
-      // Skin check-ins every 5th day
-      if (d % 5 == 0) score = 70 + ((d * 3) % 26);
-      // Make "today" feel active
-      final isToday = date.isAtSameMomentAs(today);
-      if (isToday) {
-        am = true;
-        pm = false;
-      }
-    }
+    final entry = data[routineDayKey(date)];
+    final hasData = entry != null && !isFuture;
 
     out.add(CalendarDay(
-      date: date, amDone: am, pmDone: pm, isFuture: isFuture, skinScore: score,
+      date: date,
+      amDone: hasData && entry[0],
+      pmDone: hasData && entry[1],
+      isFuture: isFuture,
+      hasData: hasData,
     ));
   }
   return out;
 }
 
-/// Completion percentage (both AM+PM done) over non-future days.
+/// Completion percentage (both AM+PM done) over days that have logged data.
 double calCompletionRate(List<CalendarDay> days) {
-  final past = days.where((d) => !d.isFuture).toList();
-  if (past.isEmpty) return 0;
-  final full = past.where((d) => d.bothDone).length;
-  return full / past.length;
+  final logged = days.where((d) => d.hasData).toList();
+  if (logged.isEmpty) return 0;
+  final full = logged.where((d) => d.bothDone).length;
+  return full / logged.length;
 }
 
 /// Count of days where both AM and PM were completed.

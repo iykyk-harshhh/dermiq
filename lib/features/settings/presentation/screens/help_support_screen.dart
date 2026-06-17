@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
@@ -52,6 +53,18 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   }
 
   void _snack(String msg) => AppSnackbar.show(context, msg);
+
+  /// Opens an external app (mail / phone) for the given URI, with a graceful
+  /// fallback message if no handler is available (e.g. emulator).
+  Future<void> _launch(Uri uri, String fallback) async {
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        if (mounted) _snack(fallback);
+      }
+    } catch (_) {
+      if (mounted) _snack(fallback);
+    }
+  }
 
   /// Lightweight support-ticket form (Report Issue / Feature Request).
   Future<void> _ticketDialog({required String type, required String hint}) async {
@@ -180,7 +193,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 color: AppColors.primary,
                 label: 'Live Chat',
                 sub: 'Avg. 2 min',
-                onTap: () => _snack('Opening live chat…'),
+                onTap: () => _launch(
+                    Uri.parse('mailto:help@dermiq.app?subject=DermIQ%20Support'),
+                    'Email us at help@dermiq.app'),
               )),
               const SizedBox(width: 10),
               Expanded(child: _ContactCard(
@@ -188,7 +203,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 color: const Color(0xFFEC4899),
                 label: 'Email Us',
                 sub: 'help@dermiq.app',
-                onTap: () => _snack('Composing email to help@dermiq.app…'),
+                onTap: () => _launch(
+                    Uri.parse('mailto:help@dermiq.app?subject=DermIQ%20Support'),
+                    'Email us at help@dermiq.app'),
               )),
               const SizedBox(width: 10),
               Expanded(child: _ContactCard(
@@ -196,7 +213,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 color: AppColors.success,
                 label: 'Call',
                 sub: 'Mon–Fri',
-                onTap: () => _snack('Calling support…'),
+                onTap: () => _launch(
+                    Uri.parse('tel:+918000000000'),
+                    'Call us at +91 80000 00000'),
               )),
             ],
           ).animate().fadeIn(delay: 120.ms, duration: 300.ms),

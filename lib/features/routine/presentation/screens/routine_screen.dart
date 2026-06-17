@@ -162,6 +162,12 @@ class RoutineScreen extends ConsumerWidget {
                       ),
                     ).animate().fadeIn(delay: 180.ms, duration: 350.ms).slideY(begin: 0.05),
 
+                    const SizedBox(height: 12),
+
+                    // My Shelf — personal product tracker (moved from Profile).
+                    _ShelfCard(onTap: () => context.push('/my-shelf'))
+                        .animate().fadeIn(delay: 210.ms, duration: 300.ms).slideY(begin: 0.04),
+
                     const SizedBox(height: 20),
 
                     // Week at a glance
@@ -185,6 +191,57 @@ class RoutineScreen extends ConsumerWidget {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── _ShelfCard ────────────────────────────────────────────────────────────────
+
+class _ShelfCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ShelfCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.dColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: context.dColors.cardShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                gradient: AppColors.gradientPrimary,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(Icons.inventory_2_rounded,
+                  color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('My Shelf', style: AppTypography.labelLarge),
+                  const SizedBox(height: 2),
+                  Text('Track your products & expiry',
+                      style: AppTypography.caption
+                          .copyWith(color: context.dColors.textSecondary)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: context.dColors.textTertiary, size: 22),
           ],
         ),
       ),

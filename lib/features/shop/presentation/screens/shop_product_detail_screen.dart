@@ -9,6 +9,7 @@ import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/shop_models.dart';
 import '../../providers/cart_provider.dart';
+import '../widgets/product_image.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ShopProductDetailScreen
@@ -121,26 +122,35 @@ class _ShopProductDetailScreenState
                     children: [
                       const SizedBox(height: AppConstants.sp32),
 
-                      // Brand initial circle
-                      Container(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            width: 2,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _p.brand.isNotEmpty
-                                ? _p.brand[0].toUpperCase()
-                                : '?',
-                            style: AppTypography.h1.copyWith(
-                              color: Colors.white,
-                              fontSize: 44,
+                      // Real product image (falls back to the brand initial)
+                      SizedBox(
+                        width: 96,
+                        height: 96,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: ProductImage(
+                            product: _p,
+                            fit: BoxFit.cover,
+                            fallback: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                  width: 2,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _p.brand.isNotEmpty
+                                      ? _p.brand[0].toUpperCase()
+                                      : '?',
+                                  style: AppTypography.h1.copyWith(
+                                    color: Colors.white,
+                                    fontSize: 44,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),

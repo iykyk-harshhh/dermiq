@@ -62,7 +62,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider);
-    final firstName = user?.displayName?.split(' ').first ?? 'Sarah';
+    final dn = user?.displayName?.trim() ?? '';
+    final firstName = dn.isNotEmpty ? dn.split(' ').first : 'there';
     final healthScore = ref.watch(healthScoreProvider);
 
     return Scaffold(
@@ -90,7 +91,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             leading: Padding(
               padding: const EdgeInsets.only(left: 16),
               child: _AvatarButton(
-                initial: firstName.substring(0, 1).toUpperCase(),
+                initial: firstName.isNotEmpty
+                    ? firstName.substring(0, 1).toUpperCase()
+                    : 'D',
               ),
             ),
             title: const _WordmarkLogo(),
@@ -1016,7 +1019,7 @@ class _TodaysRoutineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 158,
+      height: 176,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),

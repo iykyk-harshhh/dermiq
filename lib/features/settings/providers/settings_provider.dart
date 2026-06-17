@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/preferences_service.dart';
 
 /// App-wide settings: notification toggles, privacy choices and user
 /// preferences (units / region). Single source of truth for the three
@@ -118,16 +120,85 @@ class SettingsState {
       language: language ?? this.language,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+        'allNotifications': allNotifications,
+        'routineReminders': routineReminders,
+        'skinScoreUpdates': skinScoreUpdates,
+        'productExpiryAlerts': productExpiryAlerts,
+        'specialistReminders': specialistReminders,
+        'rewardAlerts': rewardAlerts,
+        'orderUpdates': orderUpdates,
+        'promotions': promotions,
+        'quietHours': quietHours,
+        'analytics': analytics,
+        'personalization': personalization,
+        'shareWithPartners': shareWithPartners,
+        'biometricLock': biometricLock,
+        'amReminder': amReminder,
+        'pmReminder': pmReminder,
+        'checkInReminder': checkInReminder,
+        'prefExpiryAlerts': prefExpiryAlerts,
+        'prefScoreUpdates': prefScoreUpdates,
+        'tipsArticles': tipsArticles,
+        'appointmentReminders': appointmentReminders,
+        'currency': currency,
+        'volumeUnit': volumeUnit,
+        'firstDayOfWeek': firstDayOfWeek,
+        'language': language,
+      };
+
+  factory SettingsState.fromMap(Map<String, dynamic> m) {
+    bool b(String k, bool d) => m[k] is bool ? m[k] as bool : d;
+    String s(String k, String d) => m[k] is String ? m[k] as String : d;
+    const def = SettingsState();
+    return SettingsState(
+      allNotifications: b('allNotifications', def.allNotifications),
+      routineReminders: b('routineReminders', def.routineReminders),
+      skinScoreUpdates: b('skinScoreUpdates', def.skinScoreUpdates),
+      productExpiryAlerts: b('productExpiryAlerts', def.productExpiryAlerts),
+      specialistReminders: b('specialistReminders', def.specialistReminders),
+      rewardAlerts: b('rewardAlerts', def.rewardAlerts),
+      orderUpdates: b('orderUpdates', def.orderUpdates),
+      promotions: b('promotions', def.promotions),
+      quietHours: b('quietHours', def.quietHours),
+      analytics: b('analytics', def.analytics),
+      personalization: b('personalization', def.personalization),
+      shareWithPartners: b('shareWithPartners', def.shareWithPartners),
+      biometricLock: b('biometricLock', def.biometricLock),
+      amReminder: b('amReminder', def.amReminder),
+      pmReminder: b('pmReminder', def.pmReminder),
+      checkInReminder: b('checkInReminder', def.checkInReminder),
+      prefExpiryAlerts: b('prefExpiryAlerts', def.prefExpiryAlerts),
+      prefScoreUpdates: b('prefScoreUpdates', def.prefScoreUpdates),
+      tipsArticles: b('tipsArticles', def.tipsArticles),
+      appointmentReminders: b('appointmentReminders', def.appointmentReminders),
+      currency: s('currency', def.currency),
+      volumeUnit: s('volumeUnit', def.volumeUnit),
+      firstDayOfWeek: s('firstDayOfWeek', def.firstDayOfWeek),
+      language: s('language', def.language),
+    );
+  }
 }
 
 class SettingsNotifier extends Notifier<SettingsState> {
   @override
-  SettingsState build() => const SettingsState();
+  SettingsState build() {
+    final raw = PreferencesService.settingsJson;
+    if (raw == null || raw.isEmpty) return const SettingsState();
+    try {
+      return SettingsState.fromMap(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return const SettingsState();
+    }
+  }
 
   /// Generic, copyWith-style mutation — keeps the API small while supporting
   /// every field. Usage: `edit((s) => s.copyWith(analytics: v))`.
-  void edit(SettingsState Function(SettingsState s) update) =>
-      state = update(state);
+  void edit(SettingsState Function(SettingsState s) update) {
+    state = update(state);
+    PreferencesService.setSettingsJson(jsonEncode(state.toMap()));
+  }
 }
 
 final settingsProvider =
