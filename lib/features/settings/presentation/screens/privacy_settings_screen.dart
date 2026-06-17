@@ -8,6 +8,7 @@ import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
+import 'legal_doc_screen.dart';
 
 class PrivacySettingsScreen extends ConsumerWidget {
   const PrivacySettingsScreen({super.key});
@@ -138,11 +139,11 @@ class PrivacySettingsScreen extends ConsumerWidget {
           AppSectionCard(title: 'Policies', children: [
             AppSettingsTile(
               icon: Icons.privacy_tip_outlined, label: 'Privacy Policy',
-              onTap: () => AppSnackbar.show(context, 'Opening Privacy Policy…'),
+              onTap: () => openLegalDoc(context, terms: false),
             ),
             AppSettingsTile(
               icon: Icons.article_outlined, label: 'Terms of Service',
-              onTap: () => AppSnackbar.show(context, 'Opening Terms of Service…'),
+              onTap: () => openLegalDoc(context, terms: true),
               divider: false,
             ),
           ]).animate().fadeIn(delay: 260.ms, duration: 300.ms).slideY(begin: 0.03),

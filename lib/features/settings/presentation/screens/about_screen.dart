@@ -1,15 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
+import 'legal_doc_screen.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   void _snack(BuildContext context, String msg) => AppSnackbar.show(context, msg);
+
+  Future<void> _open(BuildContext context, String url, String fallback) async {
+    try {
+      if (!await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication)) {
+        if (context.mounted) _snack(context, fallback);
+      }
+    } catch (_) {
+      if (context.mounted) _snack(context, fallback);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,11 +123,11 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _SocialBtn(label: 'Instagram', icon: Icons.camera_alt_rounded, color: const Color(0xFFEC4899), onTap: () => _snack(context, 'Opening Instagram…'))),
+              Expanded(child: _SocialBtn(label: 'Instagram', icon: Icons.camera_alt_rounded, color: const Color(0xFFEC4899), onTap: () => _open(context, 'https://instagram.com/dermiq', 'Find us @dermiq on Instagram'))),
               const SizedBox(width: 10),
-              Expanded(child: _SocialBtn(label: 'X', icon: Icons.tag_rounded, color: context.dColors.textPrimary, onTap: () => _snack(context, 'Opening X…'))),
+              Expanded(child: _SocialBtn(label: 'X', icon: Icons.tag_rounded, color: context.dColors.textPrimary, onTap: () => _open(context, 'https://x.com/dermiq', 'Find us @dermiq on X'))),
               const SizedBox(width: 10),
-              Expanded(child: _SocialBtn(label: 'TikTok', icon: Icons.music_note_rounded, color: const Color(0xFF06B6D4), onTap: () => _snack(context, 'Opening TikTok…'))),
+              Expanded(child: _SocialBtn(label: 'TikTok', icon: Icons.music_note_rounded, color: const Color(0xFF06B6D4), onTap: () => _open(context, 'https://tiktok.com/@dermiq', 'Find us @dermiq on TikTok'))),
             ],
           ).animate().fadeIn(delay: 220.ms, duration: 300.ms),
 
@@ -130,7 +143,7 @@ class AboutScreen extends StatelessWidget {
             child: Column(
               children: [
                 _LinkRow(icon: Icons.article_outlined, label: 'Terms of Service',
-                    onTap: () => _snack(context, 'Opening Terms of Service…')),
+                    onTap: () => openLegalDoc(context, terms: true)),
                 _LinkRow(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy',
                     onTap: () => context.push('/settings/privacy')),
                 _LinkRow(icon: Icons.code_rounded, label: 'Open Source Licences',

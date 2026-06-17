@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -11,6 +12,16 @@ import '../../providers/saved_specialist_provider.dart';
 class SpecialistDetailScreen extends ConsumerWidget {
   final String id;
   const SpecialistDetailScreen({super.key, required this.id});
+
+  Future<void> _launch(BuildContext context, Uri uri, String fallback) async {
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        if (context.mounted) _toast(context, fallback);
+      }
+    } catch (_) {
+      if (context.mounted) _toast(context, fallback);
+    }
+  }
 
   void _toast(BuildContext context, String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -173,8 +184,9 @@ class SpecialistDetailScreen extends ConsumerWidget {
                       child: _DetailAction(
                         icon: Icons.call_rounded,
                         label: 'Call Clinic',
-                        onTap: () => _toast(context,
-                            'Calling ${s.hospital}…'),
+                        onTap: () => _launch(context,
+                            Uri.parse('tel:+918000000000'),
+                            'Call the clinic at +91 80000 00000'),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -182,8 +194,11 @@ class SpecialistDetailScreen extends ConsumerWidget {
                       child: _DetailAction(
                         icon: Icons.near_me_rounded,
                         label: 'Directions',
-                        onTap: () => _toast(context,
-                            'Opening directions to ${s.hospital}…'),
+                        onTap: () => _launch(
+                            context,
+                            Uri.parse(
+                                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(s.hospital)}'),
+                            'Could not open maps.'),
                       ),
                     ),
                     const SizedBox(width: 10),

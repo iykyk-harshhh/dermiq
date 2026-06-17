@@ -8,6 +8,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../../analysis/providers/analysis_provider.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../shop/providers/cart_provider.dart';
 import '../../providers/health_score_provider.dart';
@@ -65,6 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final dn = user?.displayName?.trim() ?? '';
     final firstName = dn.isNotEmpty ? dn.split(' ').first : 'there';
     final healthScore = ref.watch(healthScoreProvider);
+    final concerns = ref.watch(analysisProvider).concerns;
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -138,6 +140,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       progress: t * healthScore / 100,
                       score: currentScore,
                       level: _scoreLevel(currentScore),
+                      concerns: concerns,
                       onViewAnalysis: () => context.push('/analysis'),
                     );
                   },
@@ -460,17 +463,34 @@ class _HealthScoreHeroCard extends StatelessWidget {
   final double progress;
   final int score;
   final String level;
+  final List<SkinConcern> concerns;
   final VoidCallback onViewAnalysis;
 
   const _HealthScoreHeroCard({
     required this.progress,
     required this.score,
     required this.level,
+    required this.concerns,
     required this.onViewAnalysis,
   });
 
+  /// A positive 0–1 "health" axis derived from the worst matching concern's
+  /// severity (lower severity → higher health). Falls back to the overall
+  /// score when the analysis has no matching concern.
+  double _axis(List<String> keys) {
+    final matches = concerns.where((c) => keys.any((k) =>
+        c.name.toLowerCase().contains(k) ||
+        c.description.toLowerCase().contains(k)));
+    if (matches.isEmpty) return (score / 100).clamp(0.0, 1.0);
+    final worst = matches.map((c) => c.percent).reduce((a, b) => a > b ? a : b);
+    return ((100 - worst) / 100).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hydration = _axis(['dry', 'texture', 'wrinkle', 'flak']);
+    final oilBalance = _axis(['pore', 'oil', 'acne', 'sebum']);
+    final uvShield = _axis(['spot', 'sun', 'pigment', 'dark', 'tan']);
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppConstants.radiusCard),
@@ -588,20 +608,6 @@ class _HealthScoreHeroCard extends StatelessWidget {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  const Icon(
-                                    Icons.trending_up_rounded,
-                                    size: 13,
-                                    color: Color(0xFF4ADE80),
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    '+5 pts',
-                                    style: AppTypography.caption.copyWith(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.55),
-                                    ),
-                                  ),
                                 ],
                               ),
                             ],
@@ -633,23 +639,23 @@ class _HealthScoreHeroCard extends StatelessWidget {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                             child: _MiniMetric(
-                                'Hydration', 0.72, Icons.water_drop_rounded)),
+                                'Hydration', hydration, Icons.water_drop_rounded)),
                         Container(
                             width: 1,
                             height: 36,
                             color: Colors.white.withValues(alpha: 0.12)),
-                        const Expanded(
+                        Expanded(
                             child: _MiniMetric(
-                                'Oil Balance', 0.65, Icons.opacity_rounded)),
+                                'Oil Balance', oilBalance, Icons.opacity_rounded)),
                         Container(
                             width: 1,
                             height: 36,
                             color: Colors.white.withValues(alpha: 0.12)),
-                        const Expanded(
+                        Expanded(
                             child: _MiniMetric(
-                                'UV Shield', 0.88, Icons.wb_sunny_rounded)),
+                                'UV Shield', uvShield, Icons.wb_sunny_rounded)),
                       ],
                     ),
                     const SizedBox(height: 18),

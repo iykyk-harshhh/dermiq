@@ -8,6 +8,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/shop_models.dart';
+import '../../data/review_repository.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../widgets/product_image.dart';
 
@@ -56,8 +58,87 @@ class _ShopProductDetailScreenState
     context.push('/shop/cart');
   }
 
+  Future<void> _writeReview() async {
+    final user = ref.read(authStateProvider);
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to write a review.')),
+      );
+      return;
+    }
+    final textCtrl = TextEditingController();
+    var rating = 5.0;
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Write a review', style: AppTypography.h4),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: List.generate(5, (i) {
+                  final filled = i < rating;
+                  return IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      filled ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: AppColors.warning,
+                    ),
+                    onPressed: () => setLocal(() => rating = i + 1.0),
+                  );
+                }),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: textCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Share your experience…',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Submit')),
+          ],
+        ),
+      ),
+    );
+    if (submitted != true || textCtrl.text.trim().isEmpty) return;
+    final now = DateTime.now();
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    final review = ProductReview(
+      name: (user.displayName?.trim().isNotEmpty == true)
+          ? user.displayName!.trim()
+          : 'You',
+      rating: rating,
+      text: textCtrl.text.trim(),
+      date: '${months[now.month - 1]} ${now.year}',
+    );
+    await ref.read(reviewRepositoryProvider).submit(_p.id, user.id, review);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Thanks for your review!')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Real reviews from Firestore; curated seed shown until users add their own.
+    final reviews = ref.watch(productReviewsProvider(_p.id)).maybeWhen(
+          data: (list) => list.isNotEmpty ? list : seedReviews(_p),
+          orElse: () => seedReviews(_p),
+        );
     return Scaffold(
       backgroundColor: context.dColors.background,
       bottomNavigationBar: _BottomBar(
@@ -330,9 +411,37 @@ class _ShopProductDetailScreenState
                     ],
                   ),
 
+                  const SizedBox(height: AppConstants.sp12),
+
+                  // Write a review
+                  GestureDetector(
+                    onTap: _writeReview,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.rate_review_outlined,
+                              size: 16, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Text('Write a review',
+                              style: AppTypography.buttonSmall
+                                  .copyWith(color: AppColors.primary)),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: AppConstants.sp16),
 
-                  ..._mockReviews(_p).asMap().entries.map(
+                  ...reviews.asMap().entries.map(
                         (e) => Padding(
                           padding:
                               const EdgeInsets.only(bottom: AppConstants.sp12),
@@ -355,47 +464,6 @@ class _ShopProductDetailScreenState
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Mock review data
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ReviewData {
-  const _ReviewData({
-    required this.name,
-    required this.rating,
-    required this.text,
-    required this.date,
-  });
-  final String name;
-  final double rating;
-  final String text;
-  final String date;
-}
-
-List<_ReviewData> _mockReviews(ShopProduct p) => [
-      _ReviewData(
-        name: 'Anika S.',
-        rating: 5.0,
-        text:
-            'Absolutely love this product! It really works for my skin and I noticed a visible difference within 2 weeks of use.',
-        date: '12 May 2025',
-      ),
-      _ReviewData(
-        name: 'Rohan M.',
-        rating: p.rating.clamp(3.5, 5.0),
-        text:
-            'Great product for the price. The formula is lightweight and absorbs quickly. Would definitely repurchase.',
-        date: '3 Apr 2025',
-      ),
-      _ReviewData(
-        name: 'Priya K.',
-        rating: (p.rating - 0.3).clamp(3.0, 5.0),
-        text:
-            'Good product overall. Shipping was fast and packaging was intact. I\'ve been using it for a month now.',
-        date: '18 Mar 2025',
-      ),
-    ];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-widgets
@@ -692,7 +760,7 @@ class _TypeChip extends StatelessWidget {
 
 class _MockReviewCard extends StatelessWidget {
   const _MockReviewCard({required this.review});
-  final _ReviewData review;
+  final ProductReview review;
 
   @override
   Widget build(BuildContext context) {
