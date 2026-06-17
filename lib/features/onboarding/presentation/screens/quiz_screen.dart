@@ -261,7 +261,7 @@ class _OptionGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.3,
+        childAspectRatio: 1.1,
       ),
       itemCount: options.length,
       itemBuilder: (_, i) {

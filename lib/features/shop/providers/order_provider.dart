@@ -4,6 +4,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../shelf/data/shelf_models.dart';
 import '../../shelf/providers/shelf_provider.dart';
 import '../data/order_repository.dart';
+import '../data/order_seed.dart';
 import '../data/shop_models.dart';
 
 class OrderNotifier extends Notifier<List<Order>> {
@@ -13,13 +14,15 @@ class OrderNotifier extends Notifier<List<Order>> {
   @override
   List<Order> build() {
     // Stream order history from Firestore when signed in (survives restart);
-    // otherwise fall back to an in-memory session list.
+    // otherwise fall back to an in-memory session list. Until the user has any
+    // real orders, show realistic demo history so My Orders never looks empty.
     final uid = ref.watch(authStateProvider)?.id;
     if (uid != null && _repo.isOnline) {
-      final sub = _repo.watch(uid).listen((orders) => state = orders);
+      final sub = _repo.watch(uid).listen(
+          (orders) => state = orders.isNotEmpty ? orders : seedDemoOrders());
       ref.onDispose(sub.cancel);
     }
-    return [];
+    return seedDemoOrders();
   }
 
   /// Places a new order, prepends it to the list, and returns the placed [Order].

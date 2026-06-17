@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/formatters.dart';
+
 // ── Specialist ────────────────────────────────────────────────────────────────
 
 class Specialist {
@@ -40,6 +42,9 @@ class Specialist {
     this.offersOnline = true,
     this.offersInPerson = true,
   });
+
+  /// Rating to one decimal: `4.9`.
+  String get ratingStr => Fmt.rating(rating);
 
   /// Two-letter initials derived from the name (skips a leading "Dr.").
   String get initials {

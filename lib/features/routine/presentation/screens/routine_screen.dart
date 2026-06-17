@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../../data/routine_models.dart';
 import '../../../streak/data/streak_models.dart';
 import '../../../streak/providers/streak_provider.dart';
@@ -107,7 +108,10 @@ class RoutineScreen extends ConsumerWidget {
                   children: [
                     // Current Streak Card + Next Reward Card
                     streakAsync.when(
-                      loading: () => const SizedBox.shrink(),
+                      loading: () => const Padding(
+                        padding: EdgeInsets.only(bottom: 20),
+                        child: LoadingCard(height: 140),
+                      ),
                       error: (_, _) => const SizedBox.shrink(),
                       data: (s) => Column(
                         children: [

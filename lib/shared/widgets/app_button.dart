@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -119,6 +120,7 @@ class _GradientButtonState extends State<_GradientButton>
       onTapUp: widget.enabled
           ? (_) {
               _press.reverse();
+              HapticFeedback.lightImpact();
               widget.onPressed?.call();
             }
           : null,
@@ -249,7 +251,12 @@ class AppIconButton extends StatelessWidget {
       button: true,
       label: semanticLabel,
       child: GestureDetector(
-        onTap: onPressed,
+        onTap: onPressed == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onPressed!();
+              },
         child: Container(
           width: size,
           height: size,

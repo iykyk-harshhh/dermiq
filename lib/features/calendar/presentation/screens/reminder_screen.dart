@@ -423,7 +423,7 @@ class _AddReminderSheetState extends State<_AddReminderSheet> {
           Text('Type', style: AppTypography.labelMedium),
           const SizedBox(height: 10),
           SizedBox(
-            height: 88,
+            height: 108,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _presets.length,

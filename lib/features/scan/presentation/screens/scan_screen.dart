@@ -53,22 +53,28 @@ class _ScanScreenState extends State<ScanScreen>
             floating: true,
             pinned: false,
             toolbarHeight: 60,
-            leading: GestureDetector(
-              onTap: () => context.pop(),
-              child: Container(
-                margin: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: context.dColors.surface,
-                  shape: BoxShape.circle,
-                  boxShadow: context.dColors.cardShadow,
-                ),
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 19,
-                  color: context.dColors.textPrimary,
+            leading: Semantics(
+              button: true,
+              label: 'Close',
+              child: GestureDetector(
+                onTap: () => context.pop(),
+                child: Container(
+                  margin: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: context.dColors.surface,
+                    shape: BoxShape.circle,
+                    boxShadow: context.dColors.cardShadow,
+                  ),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 19,
+                    color: context.dColors.textPrimary,
+                  ),
                 ),
               ),
             ),
+
             title: Text('Scan Product', style: AppTypography.h4),
             centerTitle: true,
           ),

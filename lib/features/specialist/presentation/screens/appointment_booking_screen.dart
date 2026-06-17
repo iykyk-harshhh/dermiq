@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -58,6 +59,7 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
     // Persist the booking (Firestore when signed in) before showing the
     // confirmation — so it appears under My Appointments and survives restart.
     ref.read(appointmentProvider.notifier).book(draft);
+    HapticFeedback.heavyImpact();
     context.push('/specialist/${s.id}/confirmation', extra: draft);
   }
 
@@ -133,7 +135,7 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
                   children: [
                     const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 14),
                     const SizedBox(width: 3),
-                    Text('${s.rating}',
+                    Text(s.ratingStr,
                         style: AppTypography.caption.copyWith(
                             fontWeight: FontWeight.w600)),
                   ],

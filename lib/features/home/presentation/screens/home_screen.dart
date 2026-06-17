@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -911,16 +912,27 @@ class _CategoryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+    final radius = BorderRadius.circular(AppConstants.radiusMedium);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
+      child: Ink(
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+          borderRadius: radius,
           border: Border.all(color: color.withValues(alpha: 0.20)),
         ),
-        child: Row(
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          borderRadius: radius,
+          splashColor: color.withValues(alpha: 0.14),
+          highlightColor: color.withValues(alpha: 0.06),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+            child: Row(
           children: [
             Icon(icon, color: color, size: 18),
             const SizedBox(width: 8),
@@ -939,6 +951,8 @@ class _CategoryButton extends StatelessWidget {
             Icon(Icons.chevron_right_rounded,
                 color: color.withValues(alpha: 0.6), size: 16),
           ],
+            ),
+          ),
         ),
       ),
     );
@@ -1025,7 +1039,7 @@ class _TodaysRoutineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 176,
+      height: 200,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -1181,17 +1195,18 @@ class _AnalyzeCTACard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(18),
+    final radius = BorderRadius.circular(AppConstants.radiusCard);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
+      child: Ink(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFFF5F3FF), Color(0xFFEDE9FE)],
           ),
-          borderRadius: BorderRadius.circular(AppConstants.radiusCard),
+          borderRadius: radius,
           border: Border.all(
               color: AppColors.primary.withValues(alpha: 0.18), width: 1),
           boxShadow: [
@@ -1202,7 +1217,17 @@ class _AnalyzeCTACard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          borderRadius: radius,
+          splashColor: AppColors.primary.withValues(alpha: 0.08),
+          highlightColor: AppColors.primary.withValues(alpha: 0.04),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
           children: [
             Container(
               width: 52,
@@ -1257,6 +1282,8 @@ class _AnalyzeCTACard extends StatelessWidget {
               ),
             ),
           ],
+            ),
+          ),
         ),
       ),
     );
@@ -1273,17 +1300,18 @@ class _ShopCTACard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(18),
+    final radius = BorderRadius.circular(AppConstants.radiusCard);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
+      child: Ink(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFFF0FFFE), Color(0xFFCCFBF1)],
           ),
-          borderRadius: BorderRadius.circular(AppConstants.radiusCard),
+          borderRadius: radius,
           border: Border.all(
               color: const Color(0xFF10B981).withValues(alpha: 0.22), width: 1),
           boxShadow: [
@@ -1294,7 +1322,17 @@ class _ShopCTACard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          borderRadius: radius,
+          splashColor: const Color(0xFF10B981).withValues(alpha: 0.10),
+          highlightColor: const Color(0xFF10B981).withValues(alpha: 0.04),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
           children: [
             Container(
               width: 52,
@@ -1350,6 +1388,8 @@ class _ShopCTACard extends StatelessWidget {
               ),
             ),
           ],
+            ),
+          ),
         ),
       ),
     );
@@ -1366,17 +1406,18 @@ class _AiInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
+    final radius = BorderRadius.circular(AppConstants.radiusCard);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
+      child: Ink(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
           ),
-          borderRadius: BorderRadius.circular(AppConstants.radiusCard),
+          borderRadius: radius,
           border: Border.all(
             color: const Color(0xFFF59E0B).withValues(alpha: 0.28),
           ),
@@ -1388,7 +1429,17 @@ class _AiInsightCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          borderRadius: radius,
+          splashColor: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+          highlightColor: const Color(0xFFF59E0B).withValues(alpha: 0.05),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
@@ -1434,6 +1485,8 @@ class _AiInsightCard extends StatelessWidget {
               color: Color(0xFFB45309),
             ),
           ],
+            ),
+          ),
         ),
       ),
     );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/formatters.dart';
+
 enum OrderStatus { placed, confirmed, packed, shipped, outForDelivery, delivered, cancelled }
 
 enum PaymentMethod { cod, upi, creditCard, debitCard, netBanking, wallet }
@@ -53,8 +55,8 @@ class ShopProduct {
   bool get hasDiscount => originalPrice > price;
 
   // Formatted price strings
-  String get priceStr => '₹${price.toStringAsFixed(0)}';
-  String get originalPriceStr => '₹${originalPrice.toStringAsFixed(0)}';
+  String get priceStr => Fmt.inr(price);
+  String get originalPriceStr => Fmt.inr(originalPrice);
   String get discountStr => '${discountPct.toStringAsFixed(0)}% OFF';
 
   Map<String, dynamic> toMap() => {

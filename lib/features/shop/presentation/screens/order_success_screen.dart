@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../data/shop_models.dart';
 
 class OrderSuccessScreen extends StatelessWidget {
@@ -118,7 +119,7 @@ class OrderSuccessScreen extends StatelessWidget {
                     _DetailRow(
                       icon: Icons.currency_rupee_rounded,
                       label: 'Amount',
-                      value: '₹${order.total.toStringAsFixed(0)}',
+                      value: Fmt.inr(order.total),
                       valueColor: AppColors.primary,
                     ),
                     const SizedBox(height: AppConstants.sp12),

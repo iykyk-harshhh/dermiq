@@ -135,7 +135,7 @@ class _SavedCard extends StatelessWidget {
                       const Icon(Icons.star_rounded,
                           color: Color(0xFFD4A017), size: 13),
                       const SizedBox(width: 3),
-                      Text('${s.rating} · ${s.reviews} reviews',
+                      Text('${s.ratingStr} · ${s.reviews} reviews',
                           style: AppTypography.caption
                               .copyWith(fontWeight: FontWeight.w600)),
                     ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/dermiq_colors.dart';
@@ -31,7 +32,12 @@ class AppCard extends StatelessWidget {
       color: Colors.transparent,
       borderRadius: radius,
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onTap!();
+              },
         borderRadius: radius,
         splashColor: AppColors.primary.withValues(alpha: 0.05),
         highlightColor: AppColors.primary.withValues(alpha: 0.03),
@@ -143,23 +149,34 @@ class SelectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: padding ?? const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.08)
-              : context.dColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : context.dColors.borderLight,
-            width: isSelected ? 2.0 : 1.0,
+    final radius = BorderRadius.circular(20);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: radius,
+        splashColor: AppColors.primary.withValues(alpha: 0.06),
+        highlightColor: AppColors.primary.withValues(alpha: 0.03),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: padding ?? const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : context.dColors.surface,
+            borderRadius: radius,
+            border: Border.all(
+              color: isSelected ? AppColors.primary : context.dColors.borderLight,
+              width: isSelected ? 2.0 : 1.0,
+            ),
+            boxShadow: isSelected ? AppColors.elevatedShadow : context.dColors.cardShadow,
           ),
-          boxShadow: isSelected ? AppColors.elevatedShadow : context.dColors.cardShadow,
+          child: child,
         ),
-        child: child,
       ),
     );
   }

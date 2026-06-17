@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,6 +35,7 @@ class _ShopProductDetailScreenState
   ShopProduct get _p => widget.product;
 
   void _addToCart() {
+    HapticFeedback.mediumImpact();
     ref.read(cartProvider.notifier).addItem(_p);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -53,6 +55,7 @@ class _ShopProductDetailScreenState
   }
 
   void _orderNow() {
+    HapticFeedback.mediumImpact();
     ref.read(cartProvider.notifier).addItem(_p);
     if (!mounted) return;
     context.push('/shop/cart');
@@ -166,19 +169,23 @@ class _ShopProductDetailScreenState
               ),
             ),
             actions: [
-              GestureDetector(
-                onTap: () => setState(() => _wishlisted = !_wishlisted),
-                child: Container(
-                  margin: const EdgeInsets.all(AppConstants.sp8),
-                  padding: const EdgeInsets.all(AppConstants.sp8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _wishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                    color: Colors.white,
-                    size: 20,
+              Semantics(
+                button: true,
+                label: _wishlisted ? 'Remove from wishlist' : 'Add to wishlist',
+                child: GestureDetector(
+                  onTap: () => setState(() => _wishlisted = !_wishlisted),
+                  child: Container(
+                    margin: const EdgeInsets.all(AppConstants.sp8),
+                    padding: const EdgeInsets.all(AppConstants.sp8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _wishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),

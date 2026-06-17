@@ -6,6 +6,7 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../../data/specialist_models.dart';
 import '../../providers/appointment_provider.dart';
 
@@ -190,19 +191,12 @@ class _AppointmentList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (appointments.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(emptyIcon, size: 60, color: context.dColors.textTertiary),
-            const SizedBox(height: 14),
-            Text(emptyText,
-                style: AppTypography.labelLarge.copyWith(color: context.dColors.textTertiary)),
-            const SizedBox(height: 6),
-            Text(emptySub,
-                style: AppTypography.bodySmall.copyWith(color: context.dColors.textTertiary)),
-          ],
-        ),
+      return EmptyState(
+        icon: emptyIcon,
+        title: emptyText,
+        subtitle: emptySub,
+        actionLabel: 'Find a Specialist',
+        onAction: () => context.push('/specialist'),
       );
     }
 

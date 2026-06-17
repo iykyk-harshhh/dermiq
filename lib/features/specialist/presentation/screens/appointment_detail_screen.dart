@@ -163,14 +163,14 @@ class AppointmentDetailScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // ── Doctor information ─────────────────────────────────────────────
+          // ── Specialist information ─────────────────────────────────────────
           _InfoCard(
-            title: 'Doctor Information',
+            title: 'Specialist Information',
             icon: Icons.medical_services_rounded,
             rows: [
               (label: 'Qualifications', value: s.qualifications),
               (label: 'Experience', value: '${s.yearsExp} years'),
-              (label: 'Rating', value: '${s.rating} (${s.reviews} reviews)'),
+              (label: 'Rating', value: '${s.ratingStr} (${s.reviews} reviews)'),
             ],
           ).animate().fadeIn(delay: 140.ms, duration: 320.ms).slideY(begin: 0.04),
 

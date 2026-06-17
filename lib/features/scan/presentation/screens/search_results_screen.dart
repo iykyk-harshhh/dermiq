@@ -710,16 +710,20 @@ class _SortSheet extends StatelessWidget {
             children: [
               Text('Sort By', style: AppTypography.h4),
               const Spacer(),
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 30, height: 30,
-                  decoration: BoxDecoration(
-                    color:  context.dColors.surfaceDim,
-                    shape:  BoxShape.circle,
+              Semantics(
+                button: true,
+                label: 'Close',
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color:  context.dColors.surfaceDim,
+                      shape:  BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close_rounded,
+                        size: 18, color: context.dColors.textSecondary),
                   ),
-                  child: Icon(Icons.close_rounded,
-                      size: 16, color: context.dColors.textSecondary),
                 ),
               ),
             ],

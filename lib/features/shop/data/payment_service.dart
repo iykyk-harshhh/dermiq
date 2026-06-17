@@ -37,9 +37,14 @@ class PaymentService {
     required String phone,
     String description = 'DermIQ order',
   }) async {
-    return const PaymentResult(
-      PaymentOutcome.failed,
-      message: 'Online payment isn\'t enabled yet — please choose Cash on Delivery.',
+    // DEMO MODE: online payments are simulated (no real charge) until the
+    // Razorpay backend is funded + deployed. The secure server flow
+    // (createRazorpayOrder + verifyRazorpayPayment) already exists in
+    // functions/index.js and the native checkout is re-added at that point.
+    await Future.delayed(const Duration(milliseconds: 1400));
+    return PaymentResult(
+      PaymentOutcome.success,
+      paymentId: 'demo_${DateTime.now().millisecondsSinceEpoch}',
     );
   }
 }

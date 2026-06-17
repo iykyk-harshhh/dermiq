@@ -421,7 +421,7 @@ class _AddStepSheetState extends State<_AddStepSheet> {
           Text('Step Type', style: AppTypography.labelMedium),
           const SizedBox(height: 10),
           SizedBox(
-            height: 90,
+            height: 108,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _types.length,

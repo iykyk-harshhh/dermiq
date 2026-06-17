@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/ios_notification.dart';
 import '../../data/payment_service.dart';
 import '../../data/shop_models.dart';
@@ -98,13 +100,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     ref.read(cartProvider.notifier).clear();
 
     if (!mounted) return;
+    HapticFeedback.heavyImpact();
     // iOS-style drop-in notification confirming the order (persists over the
     // navigation via the root overlay).
     IosNotification.show(
       context,
       title: 'Order Confirmed',
       message: 'Your order ${order.orderIdDisplay} is on its way. '
-          'Arriving by ${order.estimatedDelivery.day}/${order.estimatedDelivery.month}.',
+          'Arriving by ${Fmt.date(order.estimatedDelivery)}.',
       icon: Icons.local_shipping_rounded,
       color: AppColors.success,
     );
@@ -522,13 +525,13 @@ class _SummaryStep extends StatelessWidget {
                 child: Column(
                   children: [
                     _TotalRow(label: 'Subtotal',
-                        value: '₹${cart.subtotal.toStringAsFixed(0)}'),
+                        value: Fmt.inr(cart.subtotal)),
                     const SizedBox(height: AppConstants.sp8),
                     _TotalRow(
                       label: 'Delivery',
                       value: cart.deliveryCharge == 0
                           ? 'FREE'
-                          : '₹${cart.deliveryCharge.toStringAsFixed(0)}',
+                          : Fmt.inr(cart.deliveryCharge),
                       valueColor: cart.deliveryCharge == 0
                           ? AppColors.success
                           : null,
@@ -537,7 +540,7 @@ class _SummaryStep extends StatelessWidget {
                       const SizedBox(height: AppConstants.sp8),
                       _TotalRow(
                         label: 'Discount',
-                        value: '−₹${cart.discountAmount.toStringAsFixed(0)}',
+                        value: '−${Fmt.inr(cart.discountAmount)}',
                         valueColor: AppColors.success,
                       ),
                     ],
@@ -546,7 +549,7 @@ class _SummaryStep extends StatelessWidget {
                     const SizedBox(height: AppConstants.sp12),
                     _TotalRow(
                       label: 'Total',
-                      value: '₹${cart.total.toStringAsFixed(0)}',
+                      value: Fmt.inr(cart.total),
                       isBold: true,
                     ),
                   ],
@@ -631,7 +634,7 @@ class _SummaryItemRow extends StatelessWidget {
               ],
             ),
           ),
-          Text('₹${item.lineTotal.toStringAsFixed(0)}',
+          Text(Fmt.inr(item.lineTotal),
               style: AppTypography.labelMedium
                   .copyWith(color: AppColors.primary)),
         ],
@@ -708,7 +711,31 @@ class _PaymentStep extends StatelessWidget {
         const SizedBox(height: AppConstants.sp4),
         Text('Choose how you\'d like to pay',
             style: AppTypography.bodyMedium),
-        const SizedBox(height: AppConstants.sp24),
+        const SizedBox(height: AppConstants.sp12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded,
+                  size: 16, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Online payments run in demo mode (no real charge). '
+                  'Cash on Delivery is fully live.',
+                  style: AppTypography.caption
+                      .copyWith(color: context.dColors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppConstants.sp16),
         Container(
           decoration: BoxDecoration(
             color: context.dColors.surface,

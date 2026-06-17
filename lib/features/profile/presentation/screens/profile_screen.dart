@@ -255,7 +255,7 @@ class ProfileScreen extends ConsumerWidget {
                     _MenuTile(
                       icon: Icons.bookmark_rounded,
                       label: 'Saved Specialists',
-                      subtitle: 'Your bookmarked doctors',
+                      subtitle: 'Your bookmarked specialists',
                       onTap: () => context.push('/saved-specialists'),
                     ),
                     _MenuTile(

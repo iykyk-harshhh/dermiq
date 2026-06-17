@@ -8,6 +8,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../data/shop_models.dart';
 import '../../providers/order_provider.dart';
 
@@ -334,7 +335,7 @@ class OrderTrackingScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Text('₹${item.lineTotal.toStringAsFixed(0)}',
+                    Text(Fmt.inr(item.lineTotal),
                         style: AppTypography.labelMedium
                             .copyWith(color: AppColors.primary)),
                   ],

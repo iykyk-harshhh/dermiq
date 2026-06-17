@@ -8,6 +8,8 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../shared/widgets/app_top_bar.dart';
 import '../../data/shop_models.dart';
 import '../../providers/order_provider.dart';
 
@@ -24,11 +26,7 @@ class MyOrdersScreen extends ConsumerWidget {
         backgroundColor: context.dColors.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: context.dColors.textPrimary, size: 20),
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(),
         title: Text('My Orders', style: AppTypography.h4),
         centerTitle: true,
         bottom: PreferredSize(
@@ -282,7 +280,7 @@ class _OrderCard extends ConsumerWidget {
                   Text('Total',
                       style: AppTypography.caption),
                   Text(
-                    '₹${order.total.toStringAsFixed(0)}',
+                    Fmt.inr(order.total),
                     style: AppTypography.labelLarge
                         .copyWith(color: AppColors.primary),
                   ),

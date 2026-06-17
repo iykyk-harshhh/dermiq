@@ -173,7 +173,7 @@ class _SpecialistListingScreenState extends State<SpecialistListingScreen> {
 
             // ── Filter chips ───────────────────────────────────────────────
             SizedBox(
-              height: 38,
+              height: 48,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -409,7 +409,7 @@ class _SpecCard extends StatelessWidget {
               children: [
                 const Icon(Icons.star_rounded, color: Color(0xFFD4A017), size: 14),
                 const SizedBox(width: 4),
-                Text('${s.rating} · ${s.reviews} reviews',
+                Text('${s.ratingStr} · ${s.reviews} reviews',
                     style: AppTypography.caption.copyWith(
                         fontWeight: FontWeight.w600)),
                 const SizedBox(width: 12),

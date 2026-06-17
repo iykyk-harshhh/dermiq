@@ -47,6 +47,45 @@ void openLegalDoc(BuildContext context, {required bool terms}) {
   ));
 }
 
+void openUserGuide(BuildContext context) {
+  Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => const LegalDocScreen(title: 'User Guide', body: _guideText),
+  ));
+}
+
+const _guideText = '''
+Welcome to DermIQ — here's how to get the most out of the app.
+
+1. Build your profile
+Take the skin and hair quizzes after signing up. Your answers personalise your health score, analysis and product recommendations. You can revisit them any time from your profile.
+
+2. Your Home dashboard
+The DermIQ Health Score reflects your routine consistency. The cards below surface your top concerns, today's routine, and AI insights.
+
+3. Scan products
+Tap Scan to read a product's barcode or ingredient label. DermIQ checks ingredients against your profile and flags matches or conflicts. Demo barcodes work offline.
+
+4. My Shelf
+Find it inside Routine (under the AM/PM cards). Add products you own to track expiry and favourites — it syncs to your account.
+
+5. Your Routine
+Open the AM or PM routine and check off each step as you complete it. Completing routines builds your streak and updates your calendar (green = both done, yellow = one, red = missed).
+
+6. Calendar & Progress
+The calendar colours each day by how much of your routine you completed. Progress shows your score trend and key metrics over time.
+
+7. Shop
+Browse 80+ real products matched to your profile. Add to cart and check out with Cash on Delivery or online payment.
+
+8. Book a specialist
+From Find a Specialist, pick a doctor, choose a date and time, and confirm. Your bookings appear under My Appointments.
+
+9. Ask the assistant
+Tap the Chat tab to ask about ingredients, routines or concerns any time.
+
+Need more help? Settings → Help & Support, or email help@dermiq.app.
+''';
+
 const _privacyText = '''
 Last updated: June 2026
 

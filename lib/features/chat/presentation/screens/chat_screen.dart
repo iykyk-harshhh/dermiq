@@ -82,18 +82,104 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  /// Offline skincare/haircare knowledge base. Used as a graceful fallback when
+  /// the Claude-backed Cloud Function isn't reachable — it matches the question
+  /// against scored keyword rules and returns the best answer, so the assistant
+  /// stays genuinely useful without a network/API key.
   String _getAIResponse(String question) {
     final q = question.toLowerCase();
-    if (q.contains('vitamin c') && q.contains('retinol')) {
-      return 'Great question! Vitamin C and Retinol can actually cancel each other out when used together. Vitamin C works best at a low pH, while Retinol needs a higher pH. Use Vitamin C in the morning and Retinol at night for the best results.';
+    bool has(List<String> ks) => ks.any(q.contains);
+
+    // Most specific intents first (ingredient conflicts), then topics.
+    if (has(['vitamin c', 'vit c']) && has(['retinol', 'retinoid'])) {
+      return 'Use them at different times: Vitamin C in the morning (it boosts your SPF\'s antioxidant defence) and Retinol at night (when skin repairs). Layering both together can be irritating and less effective, so AM/PM split is the safe, results-driven approach.';
     }
-    if (q.contains('dry')) {
-      return 'Dry skin can be caused by several factors: lack of moisturization, harsh cleansers stripping the skin barrier, dehydration, or environmental factors. I\'d recommend switching to a ceramide-based cleanser and adding hyaluronic acid to your routine.';
+    if (has(['retinol', 'retinoid']) && has(['aha', 'bha', 'glycolic', 'salicylic', 'acid'])) {
+      return 'Avoid using retinol and strong acids (AHA/BHA) in the same routine — together they over-exfoliate and can damage your barrier. Alternate nights: acids one night, retinol another. Always follow with moisturiser and use SPF every morning.';
     }
-    if (q.contains('niacinamide')) {
-      return 'Niacinamide (Vitamin B3) is a powerhouse ingredient! It reduces pore appearance, controls oil, fades dark spots, and strengthens your skin barrier. It\'s well-tolerated and works with most other ingredients.';
+    if (has(['order', 'sequence', 'layer', 'step', 'first', 'routine']) &&
+        !has(['hair', 'scalp'])) {
+      return 'A simple, effective order:\n\nAM: Cleanser → Vitamin C serum → Moisturiser → Sunscreen (always last).\nPM: Cleanser → treatment/active (retinol or an acid) → Moisturiser.\n\nRule of thumb: thinnest to thickest, and water-based before oil-based. Introduce one new active at a time.';
     }
-    return 'That\'s a great skincare question! Based on your skin profile, I\'d suggest starting with a gentle routine and slowly introducing active ingredients. Would you like me to analyze a specific concern or ingredient in more detail?';
+
+    // Ingredients
+    if (has(['niacinamide'])) {
+      return 'Niacinamide (Vitamin B3) is a do-it-all: it controls oil, refines pores, fades dark spots and strengthens your skin barrier. 5–10% is plenty, it suits all skin types, and it layers well with almost everything (including Vitamin C — the old "they cancel out" claim is a myth).';
+    }
+    if (has(['hyaluronic', 'ha ', 'hydration serum'])) {
+      return 'Hyaluronic acid is a humectant — it pulls water into the skin for instant plumping. Apply it to damp skin and seal with a moisturiser on top, otherwise in dry climates it can pull moisture out of the skin. Great for every skin type, including oily.';
+    }
+    if (has(['salicylic', 'bha'])) {
+      return 'Salicylic acid (a BHA) is oil-soluble, so it gets inside pores to clear blackheads, whiteheads and acne. Start 2–3x a week at ~2%. It pairs well with niacinamide; avoid stacking it with retinol on the same night.';
+    }
+    if (has(['glycolic', 'aha', 'lactic', 'exfoliat'])) {
+      return 'AHAs (glycolic, lactic) exfoliate the surface to smooth texture and brighten dullness. Use at night 1–3x a week, never with retinol the same night, and SPF the next day is non-negotiable (AHAs increase sun sensitivity).';
+    }
+    if (has(['vitamin c', 'vit c', 'ascorbic'])) {
+      return 'Vitamin C brightens, fades pigmentation and protects against daily damage. Use it in the morning before sunscreen. Introduce gradually if your skin is sensitive, and store it away from light/air so it stays potent.';
+    }
+    if (has(['retinol', 'retinoid', 'anti-aging', 'anti aging', 'wrinkle', 'fine line'])) {
+      return 'Retinol is the gold standard for fine lines, texture and acne — it speeds cell turnover and boosts collagen. Start low (0.2–0.3%) 2 nights a week, apply to dry skin, buffer with moisturiser, and expect some "purging" early on. Daily SPF is essential while using it.';
+    }
+    if (has(['ceramide', 'barrier'])) {
+      return 'Ceramides are lipids that rebuild your skin barrier — ideal if skin feels tight, flaky or stings. Look for a ceramide + cholesterol + fatty-acid moisturiser, and ease off actives for a week or two while the barrier recovers.';
+    }
+    if (has(['spf', 'sunscreen', 'sun protection', 'uv'])) {
+      return 'Sunscreen is the single highest-impact step — it prevents most signs of ageing and pigmentation. Use SPF 30–50 every morning, about two finger-lengths for the face, and reapply if you\'re outdoors. It always goes on last in your AM routine.';
+    }
+
+    // Skin concerns
+    if (has(['acne', 'pimple', 'breakout', 'spots'])) {
+      return 'For acne: cleanse gently (don\'t over-scrub), use salicylic acid or benzoyl peroxide on active spots, add niacinamide to calm and control oil, and never skip a lightweight moisturiser + SPF. Consistency beats intensity — and see a dermatologist for cystic/painful acne.';
+    }
+    if (has(['oily', 'oil control', 'shiny', 'sebum'])) {
+      return 'Oily skin still needs hydration — skipping moisturiser makes skin produce more oil. Use a gel cleanser, niacinamide, a lightweight gel moisturiser, and a matte sunscreen. Salicylic acid 2–3x a week helps keep pores clear.';
+    }
+    if (has(['dry', 'flaky', 'tight', 'dehydrat'])) {
+      return 'Dry skin: swap harsh foaming cleansers for a cream/ceramide cleanser, layer hyaluronic acid on damp skin, and seal with a richer moisturiser. Avoid hot water and over-exfoliating, which strip the barrier and worsen dryness.';
+    }
+    if (has(['sensitive', 'redness', 'irritat', 'rosacea'])) {
+      return 'For sensitive/reactive skin, keep it minimal: a gentle cleanser, a ceramide moisturiser, and mineral SPF. Look for centella (cica), panthenol and niacinamide to calm redness, and patch-test any new active for a few days first.';
+    }
+    if (has(['pigment', 'dark spot', 'melasma', 'uneven', 'tan'])) {
+      return 'To fade pigmentation: daily SPF is the foundation (without it nothing else works), plus brightening actives like Vitamin C, alpha arbutin, niacinamide or azelaic acid. It\'s gradual — expect 6–12 weeks of consistent use.';
+    }
+    if (has(['pore', 'blackhead', 'whitehead'])) {
+      return 'You can\'t shrink pores permanently, but you can make them look smaller: salicylic acid to keep them clear, niacinamide to refine, retinol for long-term texture, and SPF to prevent sun-related enlargement. Avoid harsh squeezing.';
+    }
+
+    // Hair
+    if (has(['hair fall', 'hair loss', 'shedding', 'thinning'])) {
+      return 'Some shedding (50–100 hairs/day) is normal. To reduce excess fall: be gentle when wet, use a mild sulphate-free shampoo, massage the scalp, and consider actives like redensyl or rosemary oil. Sudden or patchy loss is worth a dermatologist/trichologist visit.';
+    }
+    if (has(['dandruff', 'flaky scalp', 'itchy scalp'])) {
+      return 'Dandruff is usually a yeast imbalance, not just dryness. Use an anti-dandruff shampoo (zinc pyrithione or ketoconazole) 2–3x a week, leave it on a couple of minutes before rinsing, and don\'t over-oil the scalp, which can feed the yeast.';
+    }
+    if (has(['frizz', 'frizzy'])) {
+      return 'Frizz is dehydrated hair grabbing moisture from the air. Use a hydrating conditioner, apply a lightweight serum to damp hair, avoid rough towel-drying, and protect with heat protectant before styling.';
+    }
+    if (has(['hair growth', 'grow hair', 'longer hair'])) {
+      return 'Hair grows ~1cm/month and you can\'t rush biology — but you can stop breakage that makes it look stalled: scalp massage, gentle handling, regular trims, enough protein/iron in your diet, and consistency with a growth serum if you use one.';
+    }
+    if (has(['oily scalp', 'greasy hair'])) {
+      return 'For an oily scalp, wash a bit more often with a gentle clarifying shampoo focused on the roots, condition only the lengths, and avoid heavy oils on the scalp. Over-washing can rebound into more oil, so find your balance.';
+    }
+
+    // Meta
+    if (has(['how often', 'how many times', 'frequency'])) {
+      return 'General rule: cleanse + moisturise + SPF daily; exfoliating acids 1–3x a week; retinol 2–4 nights a week once your skin is used to it. Introduce one new active at a time and give it 4–6 weeks before judging results.';
+    }
+    if (has(['purg', 'breaking out', 'worse'])) {
+      return 'Purging (a brief breakout when starting retinoids or acids) usually settles in 4–6 weeks as cell turnover speeds up. If irritation is severe or it\'s in new areas unrelated to the active, ease off and rebuild your barrier first.';
+    }
+    if (has(['pregnan', 'breastfeed'])) {
+      return 'During pregnancy, most dermatologists advise avoiding retinoids and high-dose salicylic acid. Generally considered safe: hyaluronic acid, niacinamide, vitamin C, azelaic acid and mineral SPF — but always confirm with your doctor.';
+    }
+    if (has(['hi', 'hello', 'hey', 'help', 'start'])) {
+      return 'Hi! I\'m your DermIQ assistant. Ask me about ingredients (retinol, niacinamide, Vitamin C…), concerns (acne, dryness, pigmentation, hair fall…), or how to order your routine. What would you like help with?';
+    }
+
+    return 'Good question! Based on your skin profile, I\'d build a gentle base routine — cleanser, moisturiser and daily SPF — then add one active at a time for your main concern. Tell me your skin type or the concern you\'re tackling (acne, dryness, pigmentation, pores, hair fall…) and I\'ll get specific.';
   }
 
   @override

@@ -140,7 +140,7 @@ class SpecialistDetailScreen extends ConsumerWidget {
                           spacing: 10,
                           runSpacing: 8,
                           children: [
-                            _StatChip('${s.rating} ★', const Color(0xFFFFD700)),
+                            _StatChip('${s.ratingStr} ★', const Color(0xFFFFD700)),
                             _StatChip('${s.reviews} reviews', Colors.white),
                             _StatChip('${s.yearsExp} yrs exp', Colors.white),
                           ],
@@ -162,7 +162,7 @@ class SpecialistDetailScreen extends ConsumerWidget {
                 Row(
                   children: [
                     Expanded(child: _QuickStat(
-                        icon: Icons.star_rounded, value: '${s.rating}',
+                        icon: Icons.star_rounded, value: s.ratingStr,
                         label: 'Rating', color: const Color(0xFFF59E0B))),
                     const SizedBox(width: 10),
                     Expanded(child: _QuickStat(

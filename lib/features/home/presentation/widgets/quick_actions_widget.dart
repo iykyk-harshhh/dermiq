@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -44,16 +45,27 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push(action.route),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+    final radius = BorderRadius.circular(16);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
+      child: Ink(
         decoration: BoxDecoration(
           color: action.color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: radius,
           border: Border.all(color: action.color.withValues(alpha: 0.15)),
         ),
-        child: Column(
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            context.push(action.route);
+          },
+          borderRadius: radius,
+          splashColor: action.color.withValues(alpha: 0.14),
+          highlightColor: action.color.withValues(alpha: 0.06),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
           children: [
             Icon(action.icon, color: action.color, size: 24),
             const SizedBox(height: 6),
@@ -67,6 +79,8 @@ class _ActionTile extends StatelessWidget {
               ),
             ),
           ],
+            ),
+          ),
         ),
       ),
     );

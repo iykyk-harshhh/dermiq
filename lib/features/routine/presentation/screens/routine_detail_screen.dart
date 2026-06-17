@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -46,14 +47,18 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen>
     super.dispose();
   }
 
-  void _toggle(String id) =>
-      ref.read(routineProvider.notifier).toggleStep(widget.isAm, id);
+  void _toggle(String id) {
+    HapticFeedback.selectionClick();
+    ref.read(routineProvider.notifier).toggleStep(widget.isAm, id);
+  }
 
   Future<void> _complete() async {
+    HapticFeedback.mediumImpact();
     setState(() => _completing = true);
     await Future.delayed(const Duration(milliseconds: 1400));
     if (!mounted) return;
     ref.read(routineProvider.notifier).completeRoutine(widget.isAm);
+    HapticFeedback.heavyImpact();
     _showSuccessSheet();
   }
 

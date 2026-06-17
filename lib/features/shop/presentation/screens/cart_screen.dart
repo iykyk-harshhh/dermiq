@@ -7,6 +7,8 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../shared/widgets/app_top_bar.dart';
 import '../../../streak/providers/streak_provider.dart';
 import '../../data/shop_models.dart';
 import '../../providers/cart_provider.dart';
@@ -49,11 +51,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         backgroundColor: context.dColors.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: context.dColors.textPrimary, size: 20),
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(),
         title: Text('My Cart', style: AppTypography.h4),
         centerTitle: true,
         bottom: PreferredSize(
@@ -197,7 +195,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         .copyWith(color: AppColors.textOnDark)),
               ),
               const SizedBox(width: AppConstants.sp8),
-              Text('• ₹${cart.total.toStringAsFixed(0)}',
+              Text('• ${Fmt.inr(cart.total)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.button
@@ -278,7 +276,7 @@ class _CartItemTile extends ConsumerWidget {
                     ),
                     const Spacer(),
                     Text(
-                      '₹${item.lineTotal.toStringAsFixed(0)}',
+                      Fmt.inr(item.lineTotal),
                       style: AppTypography.labelLarge
                           .copyWith(color: AppColors.primary),
                     ),
@@ -572,13 +570,13 @@ class _OrderSummaryCard extends StatelessWidget {
           const SizedBox(height: AppConstants.sp16),
           _SummaryRow(
               label: 'Subtotal',
-              value: '₹${cart.subtotal.toStringAsFixed(0)}'),
+              value: Fmt.inr(cart.subtotal)),
           const SizedBox(height: AppConstants.sp8),
           _SummaryRow(
             label: 'Delivery',
             value: cart.deliveryCharge == 0
                 ? 'FREE'
-                : '₹${cart.deliveryCharge.toStringAsFixed(0)}',
+                : Fmt.inr(cart.deliveryCharge),
             valueColor:
                 cart.deliveryCharge == 0 ? AppColors.success : null,
           ),
@@ -586,7 +584,7 @@ class _OrderSummaryCard extends StatelessWidget {
             const SizedBox(height: AppConstants.sp8),
             _SummaryRow(
               label: 'Discount (${cart.appliedCoupon!.code})',
-              value: '−₹${cart.discountAmount.toStringAsFixed(0)}',
+              value: '−${Fmt.inr(cart.discountAmount)}',
               valueColor: AppColors.success,
             ),
           ],
@@ -600,7 +598,7 @@ class _OrderSummaryCard extends StatelessWidget {
                   style: AppTypography.labelLarge
                       .copyWith(fontSize: 16)),
               Text(
-                '₹${cart.total.toStringAsFixed(0)}',
+                Fmt.inr(cart.total),
                 style: AppTypography.labelLarge.copyWith(
                     fontSize: 18, color: AppColors.primary),
               ),

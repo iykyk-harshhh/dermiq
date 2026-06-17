@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../../../streak/data/streak_models.dart';
 import '../../../streak/providers/streak_provider.dart';
 
@@ -37,8 +38,25 @@ class GiftsScreen extends ConsumerWidget {
         centerTitle: true,
       ),
       body: streakAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        loading: () => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
+              Text('Loading your gifts…',
+                  style: AppTypography.bodyMedium
+                      .copyWith(color: context.dColors.textSecondary)),
+            ],
+          ),
+        ),
+        error: (e, _) => EmptyState(
+          icon: Icons.card_giftcard_rounded,
+          title: "Couldn't load your gifts",
+          subtitle: 'Something went wrong. Please try again.',
+          actionLabel: 'Retry',
+          onAction: () => ref.invalidate(streakProvider),
+        ),
         data: (streak) {
           final rewards = streak.rewards;
           final active = rewards.where((r) => r.status == RewardStatus.active).toList();
