@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -39,6 +40,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
 
   int _activeTab = 0;
   String _query = '';
+  Timer? _searchDebounce;
   Set<String> _selectedBrands = {};
   double _minPrice = 0;
   double _maxPrice = 5000;
@@ -66,9 +68,24 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Debounces the search query so the results carousel doesn't rebuild (and
+  /// rebuild its PageController) on every keystroke — the cause of the typing
+  /// lag/glitch. The text field itself stays instant; only filtering waits.
+  void _onQueryChanged(String value) {
+    _searchDebounce?.cancel();
+    if (value.isEmpty) {
+      setState(() => _query = '');
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (mounted) setState(() => _query = value);
+    });
   }
 
   List<String> _brandsFor(List<ShopProduct> products) =>
@@ -323,7 +340,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           // ── Search Bar ────────────────────────────────────────────────────
           _SearchBar(
             controller: _searchController,
-            onChanged: (v) => setState(() => _query = v),
+            onChanged: _onQueryChanged,
           ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.2, end: 0),
 
           // ── Tab Bar ───────────────────────────────────────────────────────
@@ -1248,6 +1265,13 @@ class _SearchResultsSliderState extends State<_SearchResultsSlider> {
     _page = initial.toDouble();
     _controller = PageController(viewportFraction: 0.68, initialPage: initial)
       ..addListener(_onScroll);
+    // The PageView's parallax transforms read `_controller.page`, which is null
+    // until the view is laid out — so the first frame painted stale until the
+    // user touched/scrolled. Force one repaint after layout so it's correct
+    // immediately.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _page = _controller?.page ?? _page);
+    });
   }
 
   void _onScroll() {

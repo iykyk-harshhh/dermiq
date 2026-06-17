@@ -44,9 +44,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     _scrollToBottom();
 
-    // Real assistant via the Claude-backed Cloud Function. Falls back to the
-    // built-in keyword replies if the backend isn't reachable (offline / not
-    // yet deployed) so the chat never dead-ends.
+    // Real assistant via the Gemini free-tier API (called directly, no Blaze).
+    // Falls back to the built-in keyword replies if the key isn't set or the
+    // call fails (offline) so the chat never dead-ends.
     String reply;
     try {
       final history = [
@@ -83,7 +83,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   /// Offline skincare/haircare knowledge base. Used as a graceful fallback when
-  /// the Claude-backed Cloud Function isn't reachable — it matches the question
+  /// the Gemini API isn't configured or reachable — it matches the question
   /// against scored keyword rules and returns the best answer, so the assistant
   /// stays genuinely useful without a network/API key.
   String _getAIResponse(String question) {

@@ -4,12 +4,12 @@ Last updated: 2026-06-15. Readiness ~96%.
 Legend: 🔴 blocker · 🟡 important · 🟢 nice-to-have · 👤 manual step · 🤖 code work · 💰 **needs money — deferred until after the investor pitch**
 
 > **Strategy:** Get a polished, fully-demoable build for the investor pitch using
-> only the **free** Firebase Spark tier (Auth + Firestore + Storage all work free).
-> Anything that costs money — Firebase **Blaze** plan (Cloud Functions), the
-> Razorpay merchant account, the Anthropic API key, the Play Console account, and
-> the Apple Developer account — is parked in **§ Post-investment** below. The app
-> already degrades gracefully without them (COD checkout works; chat falls back to
-> built-in replies), so none of them block the pitch demo.
+> only the **free** Firebase Spark tier (Auth + Firestore + Storage all work free)
+> and the **free** Gemini AI tier (AI chat, called directly — no Blaze).
+> Anything that costs money — the Razorpay merchant account, the Play Console
+> account, and the Apple Developer account — is parked in **§ Post-investment**
+> below. The app already degrades gracefully without them (COD checkout works),
+> so none of them block the pitch demo.
 
 ---
 
@@ -40,7 +40,8 @@ Do these only after funding. Code is already written and waits behind a graceful
 
 - [ ] 💰 **Firebase Blaze plan** — required for Cloud Functions (pay-as-you-go, has a free tier but needs a card on file).
 - [ ] 💰 **Deploy payments backend** — Razorpay merchant account → `firebase functions:secrets:set RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` → `cd functions && npm install && firebase deploy --only functions`. Until then, **COD works** and online pay shows "Payment Unavailable".
-- [ ] 💰 **Deploy chat backend** — `firebase functions:secrets:set ANTHROPIC_API_KEY` → deploy. Until then chat uses the built-in keyword fallback.
+- [x] **AI chat — LIVE on Gemini free tier (no Blaze).** The app calls the Gemini REST API directly (`gemini-2.5-flash`); key injected at build time via `--dart-define=GEMINI_API_KEY=...` (never committed). Falls back to the built-in keyword KB if the key is absent or a call fails. *(The old Claude Cloud Function in `functions/index.js` is now unused/parked.)*
+  - [ ] 🟡 **Pre-launch security** — a client-side key is extractable from the APK. Before public release, move the Gemini call behind a server/proxy (or add an API-key application restriction + App Check). Fine as-is for the demo.
 - [ ] 💰 **Google Play Console** ($25 one-time) — create the app, Data Safety form, store listing, then `flutter build appbundle --release` and upload.
 - [ ] 💰 **Play App Signing** — after enrolling, add Google's app-signing SHA-1 (Play Console → Setup → App signing) to Firebase, else Google Sign-In fails (`ApiException: 10`) on Play installs.
 - [ ] 💰 **Apple Developer account** ($99/yr) + iOS signing — only if shipping iOS.
@@ -61,7 +62,7 @@ Do these only after funding. Code is already written and waits behind a graceful
 - [x] Routine completion + history persist locally (daily reset); cart persists locally
 - [x] Pre-seeded 43-day streak removed (new users start at 0)
 - [x] Scanner — live Open Beauty Facts lookup (free) + mock fallback
-- [x] Chat — Claude (`claude-haiku-4-5`) via Cloud Function + keyword fallback + medical-advice disclaimer *(deploy is paid — see §Post-investment)*
+- [x] Chat — **Gemini `gemini-2.5-flash` (free tier, direct REST call)** + keyword fallback + medical-advice disclaimer. Key via `--dart-define=GEMINI_API_KEY`.
 - [x] Payments — secure Razorpay flow (server order + signature verify); COD works offline *(deploy is paid — see §Post-investment)*
 - [x] Empty `assets/animations` / `assets/lottie` pubspec refs removed
 - [x] Test suite green (93 tests; serialization + persistence + scanner covered)

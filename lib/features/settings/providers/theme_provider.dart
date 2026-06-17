@@ -7,30 +7,34 @@ import '../../auth/providers/auth_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum AppThemeMode { light, dark, system }
+enum AppThemeMode { light, dark }
 
 extension AppThemeModeX on AppThemeMode {
   ThemeMode get flutterMode {
     switch (this) {
-      case AppThemeMode.light:  return ThemeMode.light;
-      case AppThemeMode.dark:   return ThemeMode.dark;
-      case AppThemeMode.system: return ThemeMode.system;
+      case AppThemeMode.light: return ThemeMode.light;
+      case AppThemeMode.dark:  return ThemeMode.dark;
     }
   }
 
   String get label {
     switch (this) {
-      case AppThemeMode.light:  return 'Light';
-      case AppThemeMode.dark:   return 'Dark';
-      case AppThemeMode.system: return 'System';
+      case AppThemeMode.light: return 'Light';
+      case AppThemeMode.dark:  return 'Dark';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case AppThemeMode.light: return 'Bright & clean';
+      case AppThemeMode.dark:  return 'Easy on the eyes';
     }
   }
 
   IconData get icon {
     switch (this) {
-      case AppThemeMode.light:  return Icons.light_mode_rounded;
-      case AppThemeMode.dark:   return Icons.dark_mode_rounded;
-      case AppThemeMode.system: return Icons.brightness_auto_rounded;
+      case AppThemeMode.light: return Icons.light_mode_rounded;
+      case AppThemeMode.dark:  return Icons.dark_mode_rounded;
     }
   }
 }

@@ -57,6 +57,9 @@ dependencies:
   http: ^1.2.2
   url_launcher: ^6.3.1   # mailto / tel / maps intents
   share_plus: ^10.1.4    # native share sheet
+  # Also exposes the runtime preserve()/remove() API so we can hold the OS
+  # launch screen until the splash video is decoded (no static-frame flash).
+  flutter_native_splash: ^2.4.3
 
 dev_dependencies:
   flutter_test:
@@ -66,7 +69,6 @@ dev_dependencies:
   #   dart run flutter_launcher_icons
   #   dart run flutter_native_splash:create
   flutter_launcher_icons: ^0.14.2
-  flutter_native_splash: ^2.4.3
 flutter:
   uses-material-design: true
   assets:

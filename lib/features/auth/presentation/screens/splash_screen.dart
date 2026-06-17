@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
@@ -17,6 +18,16 @@ class SplashScreen extends ConsumerStatefulWidget {
 class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   late VideoPlayerController _controller;
+  bool _nativeSplashRemoved = false;
+
+  /// Drops the held OS launch screen — called once the video is ready (so the
+  /// motion graphic is already playing when revealed), and idempotently guarded
+  /// so the error path and safety timeout can't double-remove.
+  void _revealApp() {
+    if (_nativeSplashRemoved) return;
+    _nativeSplashRemoved = true;
+    FlutterNativeSplash.remove();
+  }
 
   @override
   void initState() {
@@ -24,15 +35,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     _controller = VideoPlayerController.asset('assets/videos/splash.mp4');
     _controller.initialize().then((_) {
-      if (!mounted) return;
+      if (!mounted) return _revealApp();
       setState(() {});
       _controller.play();
       _controller.setLooping(true);
+      _revealApp();
     }).catchError((_) {
       // Asset/codec failure — fall back to the static branded backdrop so the
       // very first screen never crashes or shows a blank void.
       if (mounted) setState(() {});
+      _revealApp();
     });
+
+    // Hold the OS launch screen (the logo) until the video is ready, so the app
+    // reveals straight into the playing motion graphic — no bare-backdrop gap.
+    // Safety net: never hold longer than 5s even if the video stalls, so we
+    // never appear frozen (we'd fall back to the static branded backdrop).
+    Future.delayed(const Duration(milliseconds: 5000), _revealApp);
   }
 
   @override
@@ -79,15 +98,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             ),
           ),
 
-          if (_controller.value.isInitialized)
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _controller.value.size.width,
-                height: _controller.value.size.height,
-                child: VideoPlayer(_controller),
-              ),
-            ),
+          // The motion-graphics video crossfades in over the matching gradient
+          // backdrop, so there's never a hard "pop" when it becomes ready.
+          AnimatedOpacity(
+            opacity: _controller.value.isInitialized ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeInOut,
+            child: _controller.value.isInitialized
+                ? FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _controller.value.size.width,
+                      height: _controller.value.size.height,
+                      child: VideoPlayer(_controller),
+                    ),
+                  )
+                : const SizedBox.expand(),
+          ),
 
           // Soft scrim so the text stays legible over the motion graphics —
           // transparent at the face, deepening toward the bottom CTA.

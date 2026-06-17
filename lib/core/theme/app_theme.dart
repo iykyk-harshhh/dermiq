@@ -196,20 +196,20 @@ class AppTheme {
       colorScheme: const ColorScheme.dark(
         primary: AppColors.primary,
         secondary: AppColors.lavender,
-        surface: Color(0xFF1A1730),
+        surface: Color(0xFF171328),
         error: AppColors.error,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: Color(0xFFF1EEFA),
-        surfaceContainerHighest: Color(0xFF261F3D),
+        surfaceContainerHighest: Color(0xFF221C3A),
       ),
     );
 
     return base.copyWith(
-      scaffoldBackgroundColor: const Color(0xFF0F0D1A),
+      scaffoldBackgroundColor: const Color(0xFF0B0916),
 
       appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFF0F0D1A),
+        backgroundColor: const Color(0xFF0B0916),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -260,7 +260,7 @@ class AppTheme {
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF1A1730),
+        fillColor: const Color(0xFF171328),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
@@ -288,7 +288,7 @@ class AppTheme {
       ),
 
       cardTheme: const CardThemeData(
-        color: Color(0xFF1A1730),
+        color: Color(0xFF171328),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(24)),
@@ -297,7 +297,7 @@ class AppTheme {
       ),
 
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: Color(0xFF1A1730),
+        backgroundColor: Color(0xFF171328),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -306,7 +306,7 @@ class AppTheme {
       ),
 
       dialogTheme: DialogThemeData(
-        backgroundColor: const Color(0xFF1A1730),
+        backgroundColor: const Color(0xFF171328),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titleTextStyle: AppTypography.h4.copyWith(color: const Color(0xFFF1EEFA)),
@@ -314,7 +314,7 @@ class AppTheme {
       ),
 
       chipTheme: ChipThemeData(
-        backgroundColor: const Color(0xFF261F3D),
+        backgroundColor: const Color(0xFF221C3A),
         selectedColor: AppColors.primary.withValues(alpha: 0.22),
         labelStyle: AppTypography.labelSmall.copyWith(color: const Color(0xFFF1EEFA)),
         side: const BorderSide(color: Color(0x1A7C5CFF)),
@@ -323,7 +323,7 @@ class AppTheme {
       ),
 
       dividerTheme: const DividerThemeData(
-        color: Color(0xFF2A2245),
+        color: Color(0xFF2A2348),
         thickness: 1,
         space: 1,
       ),

@@ -56,7 +56,8 @@ class ThemeSettingsScreen extends ConsumerWidget {
               final idx = mode.index;
               return Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(right: idx < 2 ? 10 : 0),
+                  padding: EdgeInsets.only(
+                      right: idx < AppThemeMode.values.length - 1 ? 12 : 0),
                   child: _ThemeModeCard(
                     mode: mode,
                     isSelected: isSelected,
@@ -167,12 +168,17 @@ class _ThemeModeCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               mode.label,
-              style: AppTypography.caption.copyWith(
-                color: isSelected ? AppColors.primary : dColors.textSecondary,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+              style: AppTypography.labelMedium.copyWith(
+                color: isSelected ? AppColors.primary : dColors.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 2),
+            Text(
+              mode.description,
+              style: AppTypography.caption.copyWith(color: dColors.textTertiary),
+            ),
+            const SizedBox(height: 10),
             AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               width: 20, height: 20,
@@ -202,11 +208,7 @@ class _ThemeModeCard extends StatelessWidget {
         );
       case AppThemeMode.dark:
         return const LinearGradient(
-          colors: [Color(0xFF0F0D1A), Color(0xFF261F3D)],
-        );
-      case AppThemeMode.system:
-        return const LinearGradient(
-          colors: [Color(0xFF261F3D), Color(0xFFF0EDFF)],
+          colors: [Color(0xFF0B0916), Color(0xFF2A2150)],
         );
     }
   }

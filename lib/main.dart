@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -11,7 +12,13 @@ import 'features/auth/providers/auth_provider.dart';
 import 'features/settings/providers/theme_provider.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Keep the OS launch screen up past the first Flutter frame so the splash
+  // screen can decode its video before anything is shown — avoids the brief
+  // static-gradient flash. SplashScreen calls FlutterNativeSplash.remove()
+  // once the video is ready (with a safety timeout).
+  FlutterNativeSplash.preserve(widgetsBinding: binding);
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,

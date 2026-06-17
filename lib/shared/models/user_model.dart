@@ -5,6 +5,8 @@ class UserModel {
   final String? photoUrl;
   final String? gender;
   final int? age;
+  final DateTime? dob;
+  final String? phone;
   final String? skinType;
   final String? hairType;
   final List<String> concerns;
@@ -20,6 +22,8 @@ class UserModel {
     this.photoUrl,
     this.gender,
     this.age,
+    this.dob,
+    this.phone,
     this.skinType,
     this.hairType,
     this.concerns = const [],
@@ -37,6 +41,10 @@ class UserModel {
       photoUrl: map['photoUrl'] as String?,
       gender: map['gender'] as String?,
       age: map['age'] as int?,
+      dob: map['dob'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['dob'] as int)
+          : null,
+      phone: map['phone'] as String?,
       skinType: map['skinType'] as String?,
       hairType: map['hairType'] as String?,
       concerns: List<String>.from(map['concerns'] ?? []),
@@ -55,6 +63,8 @@ class UserModel {
       'photoUrl': photoUrl,
       'gender': gender,
       'age': age,
+      'dob': dob?.millisecondsSinceEpoch,
+      'phone': phone,
       'skinType': skinType,
       'hairType': hairType,
       'concerns': concerns,
@@ -70,6 +80,8 @@ class UserModel {
     String? photoUrl,
     String? gender,
     int? age,
+    DateTime? dob,
+    String? phone,
     String? skinType,
     String? hairType,
     List<String>? concerns,
@@ -84,6 +96,8 @@ class UserModel {
       photoUrl: photoUrl ?? this.photoUrl,
       gender: gender ?? this.gender,
       age: age ?? this.age,
+      dob: dob ?? this.dob,
+      phone: phone ?? this.phone,
       skinType: skinType ?? this.skinType,
       hairType: hairType ?? this.hairType,
       concerns: concerns ?? this.concerns,

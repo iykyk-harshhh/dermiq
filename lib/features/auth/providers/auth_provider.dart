@@ -111,12 +111,22 @@ class FirebaseAuthService implements AuthService {
     await _ref.read(analyticsServiceProvider).setUserId(user?.uid);
 
     if (user != null) {
-      await _ref.read(userRepositoryProvider)?.ensureCreated(
+      final repo = _ref.read(userRepositoryProvider);
+      // Register the account on first auth (creates users/{uid}).
+      await repo?.ensureCreated(
             uid: user.uid,
             name: user.displayName,
             email: user.email,
             photoUrl: user.photoURL,
           );
+      // Record this login: username, email, and the login date/time. Runs on
+      // every sign-in (and session restore) so the doc always reflects the
+      // latest login.
+      await repo?.updateFields(user.uid, {
+        if (user.displayName != null) 'name': user.displayName,
+        if (user.email != null) 'email': user.email,
+        'lastLoginAt': DateTime.now().toIso8601String(),
+      });
     }
   }
 

@@ -56,16 +56,16 @@ class DermIQColors extends ThemeExtension<DermIQColors> {
   // ── Dark theme ─────────────────────────────────────────────────────────────
 
   static final dark = DermIQColors(
-    background:    const Color(0xFF0F0D1A),
-    surface:       const Color(0xFF1A1730),
-    surfaceDim:    const Color(0xFF261F3D),
-    textPrimary:   const Color(0xFFF1EEFA),
-    textSecondary: const Color(0xFFB0A8D0),
-    textTertiary:  const Color(0xFF6B6285),
-    borderLight:   const Color(0x1A7C5CFF),
-    borderMedium:  const Color(0x337C5CFF),
-    divider:       const Color(0xFF2A2245),
-    navBackground: const Color(0xFF1A1730),
+    background:    const Color(0xFF0B0916),
+    surface:       const Color(0xFF171328),
+    surfaceDim:    const Color(0xFF221C3A),
+    textPrimary:   const Color(0xFFF2EFFB),
+    textSecondary: const Color(0xFFB6AED4),
+    textTertiary:  const Color(0xFF7A7099),
+    borderLight:   const Color(0x267C5CFF),
+    borderMedium:  const Color(0x407C5CFF),
+    divider:       const Color(0xFF2A2348),
+    navBackground: const Color(0xFF171328),
     cardShadow: [
       BoxShadow(
         color: AppColors.primary.withValues(alpha: 0.12),
