@@ -47,13 +47,15 @@ class Specialist {
   String get ratingStr => Fmt.rating(rating);
 
   /// Two-letter initials derived from the name (skips a leading "Dr.").
+  /// Hardened against short/empty names so it can never throw a RangeError.
   String get initials {
     final clean = name.replaceFirst('Dr. ', '').trim();
-    final parts = clean.split(' ');
+    final parts = clean.split(' ').where((p) => p.isNotEmpty).toList();
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return clean.substring(0, 2).toUpperCase();
+    if (clean.isEmpty) return '?';
+    return clean.padRight(2, ' ').substring(0, 2).trim().toUpperCase();
   }
 }
 

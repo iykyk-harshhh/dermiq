@@ -316,7 +316,7 @@ class OrderTrackingScreen extends ConsumerWidget {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        item.product.brand.substring(0, 1),
+                        item.product.brand.isNotEmpty ? item.product.brand[0] : '?',
                         style: AppTypography.labelSmall
                             .copyWith(color: item.product.accentColor),
                       ),

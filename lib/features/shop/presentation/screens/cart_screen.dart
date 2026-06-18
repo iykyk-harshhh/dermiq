@@ -239,7 +239,7 @@ class _CartItemTile extends ConsumerWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              product.brand.substring(0, 1).toUpperCase(),
+              (product.brand.isNotEmpty ? product.brand[0] : '?').toUpperCase(),
               style: AppTypography.h3.copyWith(color: product.accentColor),
             ),
           ),

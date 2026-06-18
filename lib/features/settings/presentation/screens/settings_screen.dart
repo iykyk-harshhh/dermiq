@@ -20,9 +20,11 @@ class SettingsScreen extends ConsumerWidget {
       danger: true,
     );
     if (confirmed != true) return;
+    // Clear the session. The router's auth guard (wired to authState via
+    // refreshListenable) then redirects this protected screen to /login on its
+    // own — exactly once. We deliberately DON'T also call context.go('/login')
+    // here: doing both raced two navigations to /login and left a black frame.
     await ref.read(authProvider).signOut();
-    if (!context.mounted) return;
-    context.go('/login');
   }
 
   @override

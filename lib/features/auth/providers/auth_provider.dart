@@ -171,7 +171,12 @@ class FirebaseAuthService implements AuthService {
 
   @override
   Future<void> signOut() async {
-    await GoogleSignIn().signOut();
+    // Google sign-out can throw/no-op (e.g. the user signed in with email) —
+    // never let it block the Firebase sign-out, which is what flips authState
+    // to null and drives the router back to /login.
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
     await _auth.signOut();
   }
 

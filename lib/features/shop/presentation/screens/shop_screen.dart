@@ -36,7 +36,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   // Used by the fly-to-cart animation: locates the app-bar cart icon and gives
   // it a small bounce when a product lands in it.
   final GlobalKey _cartKey = GlobalKey();
-  double _cartScale = 1.0;
+  // ValueNotifier (not setState) so the cart-bounce never rebuilds the whole
+  // screen — that was replaying every product card's entrance animation.
+  final ValueNotifier<double> _cartScale = ValueNotifier<double>(1.0);
 
   int _activeTab = 0;
   String _query = '';
@@ -69,6 +71,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _cartScale.dispose();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -187,9 +190,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
       entry.remove();
       controller.dispose();
       if (!mounted) return;
-      setState(() => _cartScale = 1.28);
+      _cartScale.value = 1.28;
       Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted) setState(() => _cartScale = 1.0);
+        if (mounted) _cartScale.value = 1.0;
       });
     });
   }
@@ -228,7 +231,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     final allBrands = _brandsFor(
       _activeTab == 0 ? skincare : haircare,
     );
-    final cartCount = ref.watch(cartProvider).itemCount;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -278,13 +280,19 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           style: AppTypography.h3.copyWith(color: context.dColors.textPrimary),
         ),
         actions: [
-          // Cart — fly-to-cart target; badge shows the live item count.
+          // Cart — fly-to-cart target; badge shows the live item count. The
+          // bounce uses a ValueNotifier and the badge a scoped Consumer, so
+          // neither rebuilds the product grid (no entrance-animation flicker).
           GestureDetector(
             onTap: () => context.push('/cart'),
-            child: AnimatedScale(
-              scale: _cartScale,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutBack,
+            child: ValueListenableBuilder<double>(
+              valueListenable: _cartScale,
+              builder: (_, scale, child) => AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutBack,
+                child: child,
+              ),
               child: Container(
                 key: _cartKey,
                 width: 44,
@@ -295,29 +303,34 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                   children: [
                     Icon(Icons.shopping_bag_outlined,
                         color: context.dColors.textPrimary, size: 24),
-                    if (cartCount > 0)
-                      Positioned(
-                        top: -3,
-                        right: -4,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          constraints: const BoxConstraints(minWidth: 16),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            cartCount > 9 ? '9+' : '$cartCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
+                    Positioned(
+                      top: -3,
+                      right: -4,
+                      child: Consumer(
+                        builder: (_, ref, _) {
+                          final cartCount = ref.watch(cartProvider).itemCount;
+                          if (cartCount == 0) return const SizedBox.shrink();
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 1),
+                            constraints: const BoxConstraints(minWidth: 16),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
                             ),
-                          ),
-                        ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              cartCount > 9 ? '9+' : '$cartCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          );
+                        },
                       ),
+                    ),
                   ],
                 ),
               ),

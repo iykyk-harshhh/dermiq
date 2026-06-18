@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_typography.dart';
 import 'core/router/app_router.dart';
 import 'core/services/preferences_service.dart';
 import 'core/firebase/firebase_bootstrap.dart';
@@ -61,11 +62,19 @@ class DermIQApp extends ConsumerWidget {
     final themeAsync = ref.watch(themeProvider);
     final themeMode = themeAsync.valueOrNull?.flutterMode ?? ThemeMode.light;
 
+    // Drive AppTypography's text-colour getters so bare `AppTypography.x`
+    // usages (e.g. app-bar titles) are readable in dark mode. Set before the
+    // tree builds this frame.
+    AppTypography.isDark = themeMode == ThemeMode.dark;
+
     return MaterialApp.router(
       title: 'DermIQ',
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      // Switch themes instantly — the default ~200ms cross-fade lerps every
+      // colour across the whole tree each frame and felt laggy.
+      themeAnimationDuration: Duration.zero,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );
