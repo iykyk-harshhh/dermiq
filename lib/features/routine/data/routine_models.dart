@@ -20,6 +20,52 @@ class RoutineStep {
     required this.color,
     required this.durationMin,
   });
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'stepType': stepType,
+        'productName': productName,
+        'description': description,
+        'tip': tip,
+        'iconCodePoint': icon.codePoint,
+        'iconFontFamily': icon.fontFamily,
+        'iconFontPackage': icon.fontPackage,
+        'color': color.toARGB32(),
+        'durationMin': durationMin,
+      };
+
+  factory RoutineStep.fromMap(Map<String, dynamic> m) => RoutineStep(
+        id: m['id'] as String? ?? '',
+        stepType: m['stepType'] as String? ?? '',
+        productName: m['productName'] as String? ?? '',
+        description: m['description'] as String? ?? '',
+        tip: m['tip'] as String? ?? '',
+        icon: _iconFor((m['iconCodePoint'] as num?)?.toInt()),
+        color: Color((m['color'] as num?)?.toInt() ?? 0xFF7C5CFF),
+        durationMin: (m['durationMin'] as num?)?.toInt() ?? 1,
+      );
+
+  /// Resolves a persisted icon codePoint back to a *const* [IconData] so the
+  /// icon tree-shaker stays happy (dynamic `IconData(...)` is disallowed).
+  /// Covers every icon the seed routines and the builder's step picker use.
+  static IconData _iconFor(int? codePoint) {
+    const known = <IconData>[
+      Icons.water_drop_rounded,
+      Icons.science_rounded,
+      Icons.biotech_rounded,
+      Icons.spa_rounded,
+      Icons.wb_sunny_rounded,
+      Icons.cleaning_services_rounded,
+      Icons.auto_awesome_rounded,
+      Icons.blur_on_rounded,
+      Icons.remove_red_eye_rounded,
+      Icons.face_retouching_natural_rounded,
+    ];
+    for (final i in known) {
+      if (i.codePoint == codePoint) return i;
+    }
+    return Icons.spa_rounded;
+  }
 }
 
 class RoutineDay {
@@ -28,7 +74,12 @@ class RoutineDay {
   final bool pmDone;
   final int score;
 
-  const RoutineDay(this.label, this.amDone, this.pmDone, this.score);
+  /// `yyyy-mm-dd` key for the day this entry represents. Nullable for legacy
+  /// entries (labels-only) and lets the notifier relabel entries over time.
+  final String? dateKey;
+
+  const RoutineDay(this.label, this.amDone, this.pmDone, this.score,
+      {this.dateKey});
 
   bool get anyDone => amDone || pmDone;
   bool get fullDone => amDone && pmDone;
@@ -38,6 +89,7 @@ class RoutineDay {
         'amDone': amDone,
         'pmDone': pmDone,
         'score': score,
+        if (dateKey != null) 'dateKey': dateKey,
       };
 
   factory RoutineDay.fromMap(Map<String, dynamic> m) => RoutineDay(
@@ -45,6 +97,7 @@ class RoutineDay {
         m['amDone'] as bool? ?? false,
         m['pmDone'] as bool? ?? false,
         (m['score'] as num?)?.toInt() ?? 0,
+        dateKey: m['dateKey'] as String?,
       );
 }
 

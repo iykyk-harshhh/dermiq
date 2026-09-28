@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -9,6 +11,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../../core/firebase/repositories/user_repository.dart';
+import '../../../../core/firebase/storage_service.dart';
 
 /// Account → Edit Profile. A real, database-backed profile: the user can edit
 /// their name plus optional details (date of birth, gender, phone). Everything
@@ -26,8 +29,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _phoneCtrl;
   DateTime? _dob;
   String? _gender;
+  String? _photoUrl;
   bool _loading = true;
   bool _saving = false;
+  bool _uploadingPhoto = false;
 
   static const _genders = ['Female', 'Male', 'Other', 'Prefer not to say'];
 
@@ -37,6 +42,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.read(authStateProvider);
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
     _phoneCtrl = TextEditingController();
+    _photoUrl = user?.photoUrl;
     _load();
   }
 
@@ -52,6 +58,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           _phoneCtrl.text = u.phone ?? '';
           _dob = u.dob;
           _gender = u.gender;
+          if (u.photoUrl != null && u.photoUrl!.isNotEmpty) {
+            _photoUrl = u.photoUrl;
+          }
         });
       }
     }
@@ -74,6 +83,58 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       age--;
     }
     return age;
+  }
+
+  /// Picks a new avatar, uploads it to Firebase Storage, and persists the URL to
+  /// `users/{uid}` + the in-session auth state. Degrades gracefully offline.
+  Future<void> _changePhoto() async {
+    if (_uploadingPhoto) return;
+    final user = ref.read(authStateProvider);
+    if (user == null) return;
+
+    final storage = ref.read(storageServiceProvider);
+    if (!storage.isAvailable) {
+      AppSnackbar.show(context, 'Photo upload needs an internet connection.');
+      return;
+    }
+
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 800,
+      );
+    } catch (_) {
+      if (mounted) AppSnackbar.show(context, 'Could not open the photo library.');
+      return;
+    }
+    if (picked == null) return;
+
+    if (mounted) setState(() => _uploadingPhoto = true);
+    try {
+      final url = await storage.uploadProfilePhoto(user.id, File(picked.path));
+      await ref.read(userRepositoryProvider)?.updateFields(user.id, {
+        'photoUrl': url,
+      });
+      ref.read(authStateProvider.notifier).state = AppUser(
+        id: user.id,
+        displayName: user.displayName,
+        email: user.email,
+        photoUrl: url,
+        isAnonymous: user.isAnonymous,
+      );
+      if (mounted) {
+        setState(() => _photoUrl = url);
+        AppSnackbar.success(context, 'Profile photo updated');
+      }
+    } catch (_) {
+      if (mounted) {
+        AppSnackbar.show(context, 'Could not update photo. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
   }
 
   Future<void> _pickDob() async {
@@ -141,20 +202,65 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               children: [
                 // Avatar
                 Center(
-                  child: Container(
-                    width: 88,
-                    height: 88,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                          colors: [Color(0xFF8B6FEA), Color(0xFFA78BFA)]),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        (_nameCtrl.text.isNotEmpty ? _nameCtrl.text[0] : 'S')
-                            .toUpperCase(),
-                        style: AppTypography.h2.copyWith(color: Colors.white),
-                      ),
+                  child: GestureDetector(
+                    onTap: _uploadingPhoto ? null : _changePhoto,
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                                colors: [Color(0xFF8B6FEA), Color(0xFFA78BFA)]),
+                            shape: BoxShape.circle,
+                            image: (_photoUrl != null && _photoUrl!.isNotEmpty)
+                                ? DecorationImage(
+                                    image: NetworkImage(_photoUrl!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: _uploadingPhoto
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : (_photoUrl != null && _photoUrl!.isNotEmpty)
+                                  ? null
+                                  : Center(
+                                      child: Text(
+                                        (_nameCtrl.text.isNotEmpty
+                                                ? _nameCtrl.text[0]
+                                                : 'S')
+                                            .toUpperCase(),
+                                        style: AppTypography.h2
+                                            .copyWith(color: Colors.white),
+                                      ),
+                                    ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: const Color(0xFF3B2D9F), width: 2),
+                            ),
+                            child: const Icon(Icons.camera_alt_rounded,
+                                size: 14, color: AppColors.primary),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

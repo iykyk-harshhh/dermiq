@@ -152,6 +152,10 @@ class _HairProfileCompleteScreenState
                     // First-launch setup finished — never force setup again.
                     PreferencesService.setProfileComplete(true);
                     ref.read(profileCompleteProvider.notifier).state = true;
+                    // Mirror the completed profile to Firestore (offline-first;
+                    // no-op signed out / offline). Fire-and-forget so navigation
+                    // is never blocked on the network.
+                    ref.read(quizProvider.notifier).syncToFirestore();
                     context.go('/home');
                   },
                   icon: const Icon(

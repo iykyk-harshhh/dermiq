@@ -161,6 +161,18 @@ class AppointmentDetailScreen extends StatelessWidget {
             ],
           ).animate().fadeIn(delay: 100.ms, duration: 320.ms).slideY(begin: 0.04),
 
+          // ── Reason for visit ───────────────────────────────────────────────
+          if (appointment.reason.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _InfoCard(
+              title: 'Reason for Visit',
+              icon: Icons.notes_rounded,
+              rows: [
+                (label: 'Concern', value: appointment.reason),
+              ],
+            ).animate().fadeIn(delay: 120.ms, duration: 320.ms).slideY(begin: 0.04),
+          ],
+
           const SizedBox(height: 12),
 
           // ── Specialist information ─────────────────────────────────────────

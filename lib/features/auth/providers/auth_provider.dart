@@ -8,6 +8,7 @@ import '../../../core/firebase/crashlytics_service.dart';
 import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/firebase/repositories/user_repository.dart';
 import '../../../core/services/preferences_service.dart';
+import '../../profile_quiz/providers/quiz_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  AUTH PROVIDER
@@ -127,6 +128,10 @@ class FirebaseAuthService implements AuthService {
         if (user.email != null) 'email': user.email,
         'lastLoginAt': DateTime.now().toIso8601String(),
       });
+      // Offline-first hydration: pull any saved quiz/profile answers from
+      // Firestore into local state so a returning user on a new device / after a
+      // reinstall recovers their skin + hair profile. No-op offline / no doc.
+      await _ref.read(quizProvider.notifier).hydrateFromFirestore();
     }
   }
 
@@ -142,6 +147,15 @@ class FirebaseAuthService implements AuthService {
     final cred = await _auth.createUserWithEmailAndPassword(
         email: email, password: password);
     if (displayName != null) await cred.user?.updateDisplayName(displayName);
+    // Persist the collected gender to users/{uid}. The auth-state listener
+    // creates the doc via ensureCreated; merge the gender field on top of it.
+    // Guard against a null repo (Firebase/Firestore unavailable) like elsewhere.
+    final uid = cred.user?.uid;
+    if (uid != null && gender != null) {
+      await _ref.read(userRepositoryProvider)?.updateFields(uid, {
+        'gender': gender,
+      });
+    }
     await _ref.read(analyticsServiceProvider).logSignUp('password');
   }
 

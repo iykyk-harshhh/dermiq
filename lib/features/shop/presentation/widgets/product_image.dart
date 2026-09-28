@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shimmer/shimmer.dart';
 
 import '../../data/product_image_service.dart';
 import '../../data/shop_models.dart';
@@ -51,14 +51,17 @@ class _ImageShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: const Color(0xFFEFEAFB),
-      highlightColor: const Color(0xFFFBF9FF),
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.white,
-      ),
-    );
+    // Lightweight shimmer via flutter_animate (already a dependency) — a soft
+    // sweep over a tinted base, so no separate `shimmer` package is needed.
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: const Color(0xFFEFEAFB),
+    )
+        .animate(onPlay: (c) => c.repeat())
+        .shimmer(
+          duration: 1200.ms,
+          color: const Color(0xFFFBF9FF),
+        );
   }
 }

@@ -12,6 +12,7 @@ import '../../data/shop_models.dart';
 import '../../data/review_repository.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/wishlist_provider.dart';
 import '../widgets/product_image.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,9 +31,29 @@ class ShopProductDetailScreen extends ConsumerStatefulWidget {
 
 class _ShopProductDetailScreenState
     extends ConsumerState<ShopProductDetailScreen> {
-  bool _wishlisted = false;
-
   ShopProduct get _p => widget.product;
+
+  void _toggleWishlist() {
+    HapticFeedback.selectionClick();
+    final nowWishlisted = ref.read(wishlistProvider.notifier).toggle(_p);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          nowWishlisted
+              ? '${_p.name} added to wishlist'
+              : '${_p.name} removed from wishlist',
+          style: AppTypography.labelMedium.copyWith(color: Colors.white),
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   void _addToCart() {
     HapticFeedback.mediumImpact();
@@ -58,7 +79,7 @@ class _ShopProductDetailScreenState
     HapticFeedback.mediumImpact();
     ref.read(cartProvider.notifier).addItem(_p);
     if (!mounted) return;
-    context.push('/shop/cart');
+    context.push('/cart');
   }
 
   Future<void> _writeReview() async {
@@ -128,10 +149,23 @@ class _ShopProductDetailScreenState
       text: textCtrl.text.trim(),
       date: '${months[now.month - 1]} ${now.year}',
     );
-    await ref.read(reviewRepositoryProvider).submit(_p.id, user.id, review);
+    bool saved;
+    try {
+      saved = await ref
+          .read(reviewRepositoryProvider)
+          .submit(_p.id, user.id, review);
+    } catch (_) {
+      saved = false;
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Thanks for your review!')),
+      SnackBar(
+        content: Text(
+          saved
+              ? 'Thanks for your review!'
+              : "You're offline — review not saved. Try again when connected.",
+        ),
+      ),
     );
   }
 
@@ -142,6 +176,7 @@ class _ShopProductDetailScreenState
           data: (list) => list.isNotEmpty ? list : seedReviews(_p),
           orElse: () => seedReviews(_p),
         );
+    final wishlisted = ref.watch(isWishlistedProvider(_p.id));
     return Scaffold(
       backgroundColor: context.dColors.background,
       bottomNavigationBar: _BottomBar(
@@ -171,9 +206,9 @@ class _ShopProductDetailScreenState
             actions: [
               Semantics(
                 button: true,
-                label: _wishlisted ? 'Remove from wishlist' : 'Add to wishlist',
+                label: wishlisted ? 'Remove from wishlist' : 'Add to wishlist',
                 child: GestureDetector(
-                  onTap: () => setState(() => _wishlisted = !_wishlisted),
+                  onTap: _toggleWishlist,
                   child: Container(
                     margin: const EdgeInsets.all(AppConstants.sp8),
                     padding: const EdgeInsets.all(AppConstants.sp8),
@@ -182,7 +217,7 @@ class _ShopProductDetailScreenState
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      _wishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      wishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                       color: Colors.white,
                       size: 20,
                     ),

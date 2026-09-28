@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/diq_logo.dart';
 import '../../../../core/services/preferences_service.dart';
+import '../../../settings/presentation/screens/legal_doc_screen.dart';
 import '../../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -34,6 +36,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   late final AnimationController _sphereCtrl;
   late final AnimationController _pulseCtrl;
 
+  late final TapGestureRecognizer _tosRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +50,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
+    _tosRecognizer = TapGestureRecognizer()
+      ..onTap = () => openLegalDoc(context, terms: true);
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () => openLegalDoc(context, terms: false);
   }
 
   @override
@@ -55,6 +64,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _confirmCtrl.dispose();
     _sphereCtrl.dispose();
     _pulseCtrl.dispose();
+    _tosRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
@@ -395,6 +406,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                         decoration: TextDecoration.underline,
                                         decorationColor: AppColors.primary,
                                       ),
+                                      recognizer: _tosRecognizer,
                                     ),
                                     TextSpan(
                                       text: ' and ',
@@ -409,6 +421,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                         decoration: TextDecoration.underline,
                                         decorationColor: AppColors.primary,
                                       ),
+                                      recognizer: _privacyRecognizer,
                                     ),
                                   ],
                                 ),

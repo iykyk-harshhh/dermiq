@@ -104,7 +104,8 @@ class _SmartScannerScreenState extends ConsumerState<SmartScannerScreen>
               onRetry: _controller.reset,
               onManualSearch: () => context.push('/scan/manual'),
               onAnalyze: (product) => context.push(
-                  '/scan/analysis/${product?.barcode ?? 'scan'}'),
+                  '/scan/analysis/${product?.barcode ?? 'scan'}',
+                  extra: product),
               onClose: () => context.pop(),
             ),
         },

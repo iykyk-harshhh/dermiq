@@ -183,7 +183,29 @@ class Coupon {
   final String code;
   final double discountPct; // e.g. 10 = 10%
 
-  const Coupon({required this.code, required this.discountPct});
+  /// Minimum cart subtotal (in INR) required for the coupon to apply.
+  /// `0` (the default) means no minimum — existing seed coupons keep working.
+  final double minOrder;
+
+  /// Optional expiry. `null` (the default) means the coupon never expires.
+  final DateTime? expiry;
+
+  const Coupon({
+    required this.code,
+    required this.discountPct,
+    this.minOrder = 0,
+    this.expiry,
+  });
+
+  /// True once the coupon's [expiry] has passed. Never-expiring coupons
+  /// (`expiry == null`) always return false.
+  bool get isExpired {
+    final e = expiry;
+    return e != null && DateTime.now().isAfter(e);
+  }
+
+  /// True when [subtotal] meets this coupon's [minOrder] requirement.
+  bool meetsMinOrder(double subtotal) => subtotal >= minOrder;
 }
 
 const availableCoupons = [
@@ -221,6 +243,71 @@ class Order {
 
   String get orderIdDisplay => '#DQ${id.substring(0, 6).toUpperCase()}';
 
+  /// Client-side, deterministic status derived purely from elapsed time since
+  /// [placedAt] up to [estimatedDelivery]. This is FREE (no backend job) — the
+  /// stored [status] stays at `placed`, and the UI shows this computed value so
+  /// an order appears to progress placed → confirmed → … → outForDelivery as
+  /// time passes. Terminal/manual states win: a [cancelled] or [delivered]
+  /// order (set explicitly) is returned as-is and never auto-advances.
+  ///
+  /// The final `delivered` step is intentionally NOT auto-applied here — real
+  /// delivery is confirmed by the user (which also adds products to My Shelf),
+  /// so time-based progression tops out at [OrderStatus.outForDelivery].
+  ///
+  /// The computed stage never regresses below the stored [status], so seed/demo
+  /// orders that were created with an explicitly advanced status (e.g. an
+  /// "out for delivery" demo) keep their stage and may only move forward.
+  OrderStatus get displayStatus {
+    if (status == OrderStatus.cancelled ||
+        status == OrderStatus.delivered) {
+      return status;
+    }
+
+    OrderStatus timeStatus;
+    final now = DateTime.now();
+    if (now.isBefore(placedAt)) {
+      timeStatus = OrderStatus.placed;
+    } else {
+      final totalMs = estimatedDelivery.difference(placedAt).inMilliseconds;
+      if (totalMs <= 0) {
+        timeStatus = OrderStatus.outForDelivery;
+      } else {
+        final progress =
+            (now.difference(placedAt).inMilliseconds / totalMs).clamp(0.0, 1.0);
+        // Five active stages spread across the delivery window; the last
+        // (outForDelivery) is reached near the estimated-delivery date.
+        if (progress >= 0.9) {
+          timeStatus = OrderStatus.outForDelivery;
+        } else if (progress >= 0.6) {
+          timeStatus = OrderStatus.shipped;
+        } else if (progress >= 0.35) {
+          timeStatus = OrderStatus.packed;
+        } else if (progress >= 0.12) {
+          timeStatus = OrderStatus.confirmed;
+        } else {
+          timeStatus = OrderStatus.placed;
+        }
+      }
+    }
+
+    // Never move backwards from the stored stage (preserves demo statuses).
+    return timeStatus.index >= status.index ? timeStatus : status;
+  }
+
+  /// Label for the time-derived [displayStatus] (use in tracking/orders UI).
+  String get displayStatusLabel {
+    final s = displayStatus;
+    switch (s) {
+      case OrderStatus.placed:         return 'Order Placed';
+      case OrderStatus.confirmed:      return 'Confirmed';
+      case OrderStatus.packed:         return 'Packed';
+      case OrderStatus.shipped:        return 'Shipped';
+      case OrderStatus.outForDelivery: return 'Out for Delivery';
+      case OrderStatus.delivered:      return 'Delivered';
+      case OrderStatus.cancelled:      return 'Cancelled';
+    }
+  }
+
   String get paymentMethodDisplay {
     switch (paymentMethod) {
       case PaymentMethod.cod:        return 'Cash on Delivery';
@@ -257,6 +344,23 @@ class Order {
         'estimatedDelivery': estimatedDelivery.millisecondsSinceEpoch,
         'status': status.name,
       };
+
+  /// Safe parse for Firestore docs: returns null instead of throwing when a
+  /// doc is missing required fields or is otherwise malformed (e.g. a stray
+  /// partial write). Keeps one bad doc from crashing the whole order stream.
+  static Order? tryFromMap(Map<String, dynamic> m) {
+    if (m['id'] is! String ||
+        m['placedAt'] is! num ||
+        m['estimatedDelivery'] is! num ||
+        m['address'] is! Map) {
+      return null;
+    }
+    try {
+      return Order.fromMap(m);
+    } catch (_) {
+      return null;
+    }
+  }
 
   factory Order.fromMap(Map<String, dynamic> m) => Order(
         id: m['id'] as String,

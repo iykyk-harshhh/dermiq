@@ -1,34 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../../catalog/data/catalog_seed.dart';
+import '../../../catalog/domain/product.dart';
+import '../../data/product_scan_mapper.dart';
+import '../../providers/scan_provider.dart';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-
-class _R {
-  final String name, brand, category, desc;
-  final int    safety, skinScore, hairScore;
-  final Color  color;
-  final bool   hasFlag;
-  const _R(this.name, this.brand, this.category, this.desc,
-      this.safety, this.skinScore, this.hairScore, this.color,
-      this.hasFlag);
-}
 
 enum _Sort { bestMatch, highestRated, az }
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
-class SearchResultsScreen extends StatefulWidget {
+class SearchResultsScreen extends ConsumerStatefulWidget {
   const SearchResultsScreen({super.key});
 
   @override
-  State<SearchResultsScreen> createState() => _SearchResultsScreenState();
+  ConsumerState<SearchResultsScreen> createState() => _SearchResultsScreenState();
 }
 
-class _SearchResultsScreenState extends State<SearchResultsScreen> {
+class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
   _Sort _sort      = _Sort.bestMatch;
   int   _filterIdx = 0;
 
@@ -36,72 +31,35 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     'All', 'Cleanser', 'Moisturizer', 'Serum', 'Sunscreen', 'Treatment',
   ];
 
-  static const _all = [
-    _R(
-      'CeraVe Foaming Facial Cleanser',
-      'CeraVe',
-      'Cleanser',
-      'Non-comedogenic cleanser with ceramides, hyaluronic acid and niacinamide.',
-      92, 88, 82,
-      Color(0xFF0EA5E9),
-      false,
-    ),
-    _R(
-      'CeraVe Moisturising Cream',
-      'CeraVe',
-      'Moisturizer',
-      'Rich 24-hour cream with 3 essential ceramides and patented MVE technology.',
-      88, 85, 79,
-      Color(0xFF22C55E),
-      false,
-    ),
-    _R(
-      'CeraVe AM Facial Moisturising Lotion',
-      'CeraVe',
-      'Moisturizer',
-      'Lightweight SPF 30 moisturiser with ceramides for daily UV protection.',
-      79, 76, 64,
-      Color(0xFFF59E0B),
-      true,
-    ),
-    _R(
-      'CeraVe Hydrating Toner',
-      'CeraVe',
-      'Treatment',
-      'Alcohol-free toner that restores the skin\'s natural pH with hyaluronic acid.',
-      85, 83, 71,
-      Color(0xFF8B5CF6),
-      false,
-    ),
-    _R(
-      'CeraVe Eye Repair Cream',
-      'CeraVe',
-      'Treatment',
-      'Fragrance-free eye cream that reduces dark circles and puffiness.',
-      82, 80, 68,
-      Color(0xFF06B6D4),
-      false,
-    ),
-  ];
+  // Real local product data — filtered by the active search query.
+  List<Product> _resultsFor(String query) {
+    var list = catalogProducts.toList();
 
-  List<_R> get _results {
-    var list = _all.toList();
+    final q = query.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      list = list
+          .where((p) =>
+              p.name.toLowerCase().contains(q) ||
+              p.brand.toLowerCase().contains(q) ||
+              p.category.toLowerCase().contains(q))
+          .toList();
+    }
 
     if (_filterIdx != 0) {
       list = list
-          .where((r) => r.category == _catFilters[_filterIdx])
+          .where((p) => p.category == _catFilters[_filterIdx])
           .toList();
     }
 
     switch (_sort) {
       case _Sort.bestMatch:
         list.sort((a, b) {
-          final aAvg = (a.safety + a.skinScore + a.hairScore) / 3;
-          final bAvg = (b.safety + b.skinScore + b.hairScore) / 3;
+          final aAvg = (a.score + a.skinMatch + a.hairMatch) / 3;
+          final bAvg = (b.score + b.skinMatch + b.hairMatch) / 3;
           return bAvg.compareTo(aAvg);
         });
       case _Sort.highestRated:
-        list.sort((a, b) => b.safety.compareTo(a.safety));
+        list.sort((a, b) => b.score.compareTo(a.score));
       case _Sort.az:
         list.sort((a, b) => a.name.compareTo(b.name));
     }
@@ -126,7 +84,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final items = _results;
+    final query = ref.watch(scanProvider).query;
+    final items = _resultsFor(query);
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -241,8 +200,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                       itemBuilder: (_, i) => _ProductCard(
                         result: items[i],
                         index:  i,
-                        onTap:  () =>
-                            context.push('/scan/analysis/p${i + 1}'),
+                        onTap:  () => context.push(
+                            '/scan/analysis/${items[i].id}',
+                            extra: scannedFromProduct(items[i])),
                       ),
                     ),
             ),
@@ -302,7 +262,7 @@ class _FilterChip extends StatelessWidget {
 // ─── Product card ─────────────────────────────────────────────────────────────
 
 class _ProductCard extends StatelessWidget {
-  final _R         result;
+  final Product    result;
   final int        index;
   final VoidCallback onTap;
 
@@ -332,7 +292,14 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avg      = (result.safety + result.skinScore + result.hairScore) ~/ 3;
+    final safety    = result.score;
+    final skinScore = result.skinMatch;
+    final hairScore = result.hairMatch;
+    final hasFlag   = result.cautionIngredients.isNotEmpty;
+    final desc      = result.benefits.isNotEmpty
+        ? result.benefits.join(' · ')
+        : result.howToUse;
+    final avg      = (safety + skinScore + hairScore) ~/ 3;
     final matchCol = _matchColor(avg);
 
     return Container(
@@ -422,7 +389,7 @@ class _ProductCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      result.desc,
+                      desc,
                       style: AppTypography.caption.copyWith(
                         color:  context.dColors.textSecondary,
                         height: 1.4,
@@ -434,7 +401,7 @@ class _ProductCard extends StatelessWidget {
                     Row(
                       children: [
                         _CatBadge(result.category),
-                        if (result.hasFlag) ...[
+                        if (hasFlag) ...[
                           const SizedBox(width: 6),
                           _FlagPill(),
                         ],
@@ -457,8 +424,8 @@ class _ProductCard extends StatelessWidget {
                 Expanded(
                   child: _ScoreItem(
                     label: 'Safety',
-                    score: result.safety,
-                    color: _scoreColor(result.safety),
+                    score: safety,
+                    color: _scoreColor(safety),
                   ),
                 ),
                 VerticalDivider(
@@ -468,8 +435,8 @@ class _ProductCard extends StatelessWidget {
                 Expanded(
                   child: _ScoreItem(
                     label: 'Skin Match',
-                    score: result.skinScore,
-                    color: _scoreColor(result.skinScore),
+                    score: skinScore,
+                    color: _scoreColor(skinScore),
                   ),
                 ),
                 VerticalDivider(
@@ -479,8 +446,8 @@ class _ProductCard extends StatelessWidget {
                 Expanded(
                   child: _ScoreItem(
                     label: 'Hair Match',
-                    score: result.hairScore,
-                    color: _scoreColor(result.hairScore),
+                    score: hairScore,
+                    color: _scoreColor(hairScore),
                   ),
                 ),
               ],

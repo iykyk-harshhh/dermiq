@@ -19,11 +19,8 @@ class AnalysisResultsScreen extends ConsumerStatefulWidget {
 
 class _AnalysisResultsScreenState extends ConsumerState<AnalysisResultsScreen>
     with SingleTickerProviderStateMixin {
-  int _tab = 0;
   late final AnimationController _ringCtrl;
   late final Animation<double> _ringProgress;
-
-  final _tabs = ['Overview', 'Spots', 'Wrinkles', 'Texture', 'Pores'];
 
   @override
   void initState() {
@@ -84,38 +81,6 @@ class _AnalysisResultsScreenState extends ConsumerState<AnalysisResultsScreen>
                       .animate()
                       .fadeIn(duration: 400.ms)
                       .slideY(begin: 0.1),
-
-                  const SizedBox(height: 20),
-
-                  // Tab bar
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(_tabs.length, (i) {
-                        final active = i == _tab;
-                        return GestureDetector(
-                          onTap: () => setState(() => _tab = i),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: active ? AppColors.primary : context.dColors.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: active ? AppColors.primary : context.dColors.borderLight,
-                              ),
-                            ),
-                            child: Text(_tabs[i],
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: active ? Colors.white : context.dColors.textSecondary,
-                                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                                )),
-                          ),
-                        );
-                      }),
-                    ),
-                  ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
 
                   const SizedBox(height: 20),
 

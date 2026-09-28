@@ -16,7 +16,6 @@ abstract final class AppRoutes {
   // ── Auth flow ──────────────────────────────────────────────────────────────
   static const splash = '/splash';
   static const onboarding = '/onboarding';
-  static const welcome = '/welcome';
   static const login = '/login';
   static const register = '/register';
   static const forgotPassword = '/forgot-password';
@@ -122,7 +121,6 @@ abstract final class AppRoutes {
   /// one of these is redirected to [home]; a logged-out user is allowed.
   static const preAuth = <String>{
     onboarding,
-    welcome,
     login,
     register,
     forgotPassword,
@@ -141,7 +139,6 @@ abstract final class RouteNames {
 
   static const splash = 'splash';
   static const onboarding = 'onboarding';
-  static const welcome = 'welcome';
   static const login = 'login';
   static const register = 'register';
   static const forgotPassword = 'forgotPassword';

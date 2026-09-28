@@ -1,23 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/calendar_models.dart';
+import '../../providers/calendar_log_provider.dart';
+import '../../../settings/providers/settings_provider.dart';
 
-class CalendarScreen extends StatefulWidget {
+class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late DateTime _month;
   late DateTime _today;
-  late List<CalendarDay> _days;
   late DateTime _selected;
+
+  // Rebuilt every frame from the reactive calendar log so completions logged
+  // elsewhere (routine detail, daily view) recolour the grid immediately.
+  List<CalendarDay> _days = const [];
 
   @override
   void initState() {
@@ -26,13 +32,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _today = DateTime(now.year, now.month, now.day);
     _month = DateTime(now.year, now.month);
     _selected = _today;
-    _days = calGenerateMonth(_month);
   }
 
   void _changeMonth(int delta) {
     setState(() {
       _month = DateTime(_month.year, _month.month + delta);
-      _days = calGenerateMonth(_month);
       // Keep selection valid
       final dim = calDaysInMonth(_month);
       final day = _selected.day > dim ? dim : _selected.day;
@@ -53,8 +57,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final streak = calCurrentStreak(calGenerateMonth(DateTime(_today.year, _today.month)));
+    // Reactive source of truth — recolours when completions change anywhere.
+    final logState = ref.watch(calendarLogProvider);
+    _days = calGenerateMonth(_month, log: logState.log, checkIns: logState.checkIns);
+    final streak = calCurrentStreak(calGenerateMonth(
+      DateTime(_today.year, _today.month),
+      log: logState.log,
+      checkIns: logState.checkIns,
+    ));
     final rate = calCompletionRate(_days);
+    final mondayFirst =
+        ref.watch(settingsProvider.select((s) => s.firstDayOfWeek)) == 'Monday';
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -166,6 +179,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     days: _days,
                     today: _today,
                     selected: _selected,
+                    mondayFirst: mondayFirst,
                     onSelect: (d) => setState(() => _selected = d),
                   ).animate().fadeIn(delay: 180.ms, duration: 350.ms),
 
@@ -365,6 +379,7 @@ class _MonthGrid extends StatelessWidget {
   final List<CalendarDay> days;
   final DateTime today;
   final DateTime selected;
+  final bool mondayFirst;
   final ValueChanged<DateTime> onSelect;
 
   const _MonthGrid({
@@ -372,12 +387,13 @@ class _MonthGrid extends StatelessWidget {
     required this.days,
     required this.today,
     required this.selected,
+    required this.mondayFirst,
     required this.onSelect,
   });
 
   @override
   Widget build(BuildContext context) {
-    final blanks = calLeadingBlanks(month);
+    final blanks = calLeadingBlanksFor(month, mondayFirst: mondayFirst);
     final total = blanks + days.length;
 
     return Container(
@@ -391,7 +407,7 @@ class _MonthGrid extends StatelessWidget {
         children: [
           // Weekday headers
           Row(
-            children: calWeekDays
+            children: calWeekDaysFor(mondayFirst: mondayFirst)
                 .map((d) => Expanded(
                       child: Text(d,
                           textAlign: TextAlign.center,

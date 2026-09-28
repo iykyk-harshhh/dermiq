@@ -5,6 +5,7 @@ import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../data/ingredient_facts.dart';
 
 class IngredientAnalyzerScreen extends StatefulWidget {
   const IngredientAnalyzerScreen({super.key});
@@ -32,35 +33,60 @@ class _IngredientAnalyzerScreenState extends State<IngredientAnalyzerScreen> {
       _result = null;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    final query = _controller.text.trim();
+
+    await Future.delayed(const Duration(milliseconds: 700));
+
+    final fact = lookupIngredient(query);
+    if (!mounted) return;
 
     setState(() {
       _isAnalyzing = false;
-      _result = _AnalysisResult(
-        name: _controller.text.trim(),
-        rating: 'Generally Safe',
-        ratingColor: AppColors.success,
-        benefits: [
-          'Brightens skin tone',
-          'Antioxidant protection',
-          'Reduces hyperpigmentation',
-          'Supports collagen synthesis',
-        ],
-        warnings: [
-          'Can cause irritation at high concentrations',
-          'May oxidize — store in dark, cool place',
-          'Avoid mixing with Niacinamide directly',
-        ],
-        usage: 'Apply 2-3 drops in the morning before moisturizer. Always follow with SPF.',
-        compatibility: [
-          _Compat('Hyaluronic Acid', true),
-          _Compat('Ferulic Acid', true),
-          _Compat('Niacinamide', false),
-          _Compat('Retinol', false),
-          _Compat('AHA/BHA', false),
-        ],
-      );
+      if (fact == null) {
+        _result = _AnalysisResult(
+          name: query,
+          notFound: true,
+          rating: 'Not In Database',
+          ratingColor: AppColors.warning,
+          suitableSkinTypes: const [],
+          benefits: const [],
+          warnings: const [
+            'We don\'t have verified information on this ingredient yet.',
+            'Check the exact spelling, or try a common name (e.g. "Vitamin C", "Niacinamide").',
+            'Always patch test any new ingredient before regular use.',
+          ],
+          usage:
+              'This ingredient isn\'t in our knowledge base yet, so we can\'t '
+              'give tailored guidance. Please consult the product label or a '
+              'dermatologist.',
+          compatibility: const [],
+        );
+      } else {
+        _result = _AnalysisResult(
+          name: fact.name,
+          rating: fact.rating,
+          ratingColor: _ratingColor(fact.safety),
+          benefits: fact.benefits,
+          warnings: fact.warnings,
+          usage: fact.usage,
+          suitableSkinTypes: fact.suitableSkinTypes,
+          compatibility: fact.compatibility
+              .map((c) => _Compat(c.ingredient, c.compatible))
+              .toList(),
+        );
+      }
     });
+  }
+
+  Color _ratingColor(IngredientSafety safety) {
+    switch (safety) {
+      case IngredientSafety.safe:
+        return AppColors.success;
+      case IngredientSafety.caution:
+        return AppColors.warning;
+      case IngredientSafety.sensitive:
+        return AppColors.error;
+    }
   }
 
   @override
@@ -163,7 +189,9 @@ class _AnalysisResult {
   final List<String> benefits;
   final List<String> warnings;
   final String usage;
+  final List<String> suitableSkinTypes;
   final List<_Compat> compatibility;
+  final bool notFound;
 
   const _AnalysisResult({
     required this.name,
@@ -172,7 +200,9 @@ class _AnalysisResult {
     required this.benefits,
     required this.warnings,
     required this.usage,
+    required this.suitableSkinTypes,
     required this.compatibility,
+    this.notFound = false,
   });
 }
 
@@ -221,6 +251,28 @@ class _ResultView extends StatelessWidget {
           ),
         ),
 
+        if (result.suitableSkinTypes.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Text('Suitable For', style: AppTypography.h4),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: result.suitableSkinTypes
+                .map((t) => Chip(
+                      label: Text(t),
+                      backgroundColor:
+                          AppColors.lavender.withValues(alpha: 0.08),
+                      labelStyle: AppTypography.caption
+                          .copyWith(color: AppColors.primary),
+                      side: BorderSide(
+                          color: AppColors.lavender.withValues(alpha: 0.2)),
+                    ))
+                .toList(),
+          ),
+        ],
+
+        if (result.benefits.isNotEmpty) ...[
         const SizedBox(height: 20),
         Text('Benefits', style: AppTypography.h4),
         const SizedBox(height: 12),
@@ -243,6 +295,7 @@ class _ResultView extends StatelessWidget {
                 .toList(),
           ),
         ),
+        ],
 
         const SizedBox(height: 20),
         Text('How to Use', style: AppTypography.h4),
@@ -275,6 +328,7 @@ class _ResultView extends StatelessWidget {
           ),
         ),
 
+        if (result.compatibility.isNotEmpty) ...[
         const SizedBox(height: 20),
         Text('Compatibility', style: AppTypography.h4),
         const SizedBox(height: 12),
@@ -317,6 +371,7 @@ class _ResultView extends StatelessWidget {
                 .toList(),
           ),
         ),
+        ],
         const SizedBox(height: 32),
       ],
     );

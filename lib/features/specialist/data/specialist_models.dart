@@ -171,20 +171,26 @@ int consultDuration(String type) {
 
 class BookingDraft {
   final String specialistId;
-  final String dateLabel; // e.g. 'Today, Jun 9'
-  final String time;
+  final DateTime startAt; // real appointment date + slot time
   final String consultType;
   final int durationMin;
   final double fee;
+  final String reason; // free-text "reason for visit" (may be empty)
 
   const BookingDraft({
     required this.specialistId,
-    required this.dateLabel,
-    required this.time,
+    required this.startAt,
     required this.consultType,
     required this.durationMin,
     required this.fee,
+    this.reason = '',
   });
+
+  /// Human date label derived from [startAt] (e.g. 'Today, Jun 9').
+  String get dateLabel => relativeDayLabel(startAt);
+
+  /// Human time label derived from [startAt] (e.g. '2:00 PM').
+  String get time => timeLabel(startAt);
 }
 
 // ── Appointment (My Appointments) ─────────────────────────────────────────────
@@ -194,42 +200,68 @@ enum AppointmentStatus { upcoming, completed, cancelled, missed }
 class Appointment {
   final String id;
   final String specialistId;
-  final String dateLabel;
-  final String time;
+  final DateTime startAt; // real date + time (source of truth)
   final String consultType;
   final int durationMin;
   final AppointmentStatus status;
+  final String reason; // free-text "reason for visit" (may be empty)
 
   const Appointment({
     required this.id,
     required this.specialistId,
-    required this.dateLabel,
-    required this.time,
+    required this.startAt,
     required this.consultType,
     required this.durationMin,
     required this.status,
+    this.reason = '',
   });
 
   Specialist get specialist => lookupSpecialist(specialistId);
 
+  /// Human date label derived from [startAt] (e.g. 'Tomorrow, Jun 10').
+  String get dateLabel => relativeDayLabel(startAt);
+
+  /// Human time label derived from [startAt] (e.g. '10:30 AM').
+  String get time => timeLabel(startAt);
+
+  /// End of the session, used for status derivation.
+  DateTime get endAt => startAt.add(Duration(minutes: durationMin));
+
+  /// Free client-side status derivation (no backend): an [upcoming]
+  /// appointment whose session has already ended is treated as [completed].
+  /// Terminal statuses (completed / cancelled / missed) are returned as-is.
+  AppointmentStatus get effectiveStatus {
+    if (status == AppointmentStatus.upcoming &&
+        DateTime.now().isAfter(endAt)) {
+      return AppointmentStatus.completed;
+    }
+    return status;
+  }
+
+  /// Returns this appointment with its status resolved to [effectiveStatus].
+  Appointment resolved() => effectiveStatus == status
+      ? this
+      : copyWith(status: effectiveStatus);
+
   Appointment copyWith({AppointmentStatus? status}) => Appointment(
         id: id,
         specialistId: specialistId,
-        dateLabel: dateLabel,
-        time: time,
+        startAt: startAt,
         consultType: consultType,
         durationMin: durationMin,
         status: status ?? this.status,
+        reason: reason,
       );
 
   Map<String, dynamic> toMap() => {
         'id': id,
         'specialistId': specialistId,
-        'dateLabel': dateLabel,
-        'time': time,
+        // Real date/time — sortable, comparable, never goes stale.
+        'startAt': startAt.millisecondsSinceEpoch,
         'consultType': consultType,
         'durationMin': durationMin,
         'status': status.name,
+        'reason': reason,
         // Sort key — booking order (newest first); stored as epoch ms.
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       };
@@ -237,49 +269,76 @@ class Appointment {
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
         id: m['id'] as String,
         specialistId: m['specialistId'] as String? ?? '',
-        dateLabel: m['dateLabel'] as String? ?? '',
-        time: m['time'] as String? ?? '',
+        startAt: _readStartAt(m),
         consultType: m['consultType'] as String? ?? '',
         durationMin: (m['durationMin'] as num?)?.toInt() ?? 30,
         status: AppointmentStatus.values.firstWhere(
           (s) => s.name == m['status'],
           orElse: () => AppointmentStatus.upcoming,
         ),
+        reason: m['reason'] as String? ?? '',
       );
+
+  /// Reads the real start time, falling back to `createdAt` for legacy docs
+  /// written before `startAt` existed (they stored only display strings).
+  static DateTime _readStartAt(Map<String, dynamic> m) {
+    final start = (m['startAt'] as num?)?.toInt();
+    if (start != null) return DateTime.fromMillisecondsSinceEpoch(start);
+    final created = (m['createdAt'] as num?)?.toInt();
+    if (created != null) return DateTime.fromMillisecondsSinceEpoch(created);
+    return DateTime.now();
+  }
 }
 
+/// Sample appointments for the signed-out / offline demo only. Dates are
+/// relative to "now" so the labels and Upcoming/Past tabs always look current.
 final myAppointmentsMock = <Appointment>[
   Appointment(
     id: 'a1', specialistId: 's1',
-    dateLabel: 'Tomorrow, Jun 10', time: '10:30 AM',
+    startAt: _mockAt(1, 10, 30),
     consultType: 'Video Call', durationMin: 30,
     status: AppointmentStatus.upcoming,
+    reason: 'Persistent acne on cheeks and jawline.',
   ),
   Appointment(
     id: 'a2', specialistId: 's2',
-    dateLabel: 'Mon, Jun 15', time: '2:00 PM',
+    startAt: _mockAt(5, 14, 0),
     consultType: 'In-Person', durationMin: 45,
     status: AppointmentStatus.upcoming,
+    reason: 'Increased hair fall over the past two months.',
   ),
   Appointment(
     id: 'a3', specialistId: 's3',
-    dateLabel: 'May 28', time: '11:00 AM',
+    startAt: _mockAt(-4, 11, 0),
     consultType: 'In-Person', durationMin: 45,
     status: AppointmentStatus.completed,
   ),
   Appointment(
     id: 'a4', specialistId: 's4',
-    dateLabel: 'May 12', time: '4:00 PM',
+    startAt: _mockAt(-14, 16, 0),
     consultType: 'Chat', durationMin: 20,
     status: AppointmentStatus.completed,
   ),
   Appointment(
+    id: 'a6', specialistId: 's2',
+    startAt: _mockAt(-9, 9, 0),
+    consultType: 'Video Call', durationMin: 30,
+    status: AppointmentStatus.missed,
+  ),
+  Appointment(
     id: 'a5', specialistId: 's1',
-    dateLabel: 'Apr 30', time: '9:00 AM',
+    startAt: _mockAt(-20, 9, 0),
     consultType: 'Video Call', durationMin: 30,
     status: AppointmentStatus.cancelled,
   ),
 ];
+
+/// A date [dayOffset] days from today at [h]:[m], for sample data.
+DateTime _mockAt(int dayOffset, int h, int m) {
+  final now = DateTime.now();
+  final base = DateTime(now.year, now.month, now.day).add(Duration(days: dayOffset));
+  return DateTime(base.year, base.month, base.day, h, m);
+}
 
 // ── Date helpers (booking day picker) ─────────────────────────────────────────
 
@@ -294,3 +353,38 @@ String weekdayShort(DateTime d) => _weekdayShort[d.weekday - 1];
 
 /// Month-day label, e.g. "Jun 9".
 String monthDayLabel(DateTime d) => '${_monthShort[d.month - 1]} ${d.day}';
+
+/// Relative day label: "Today, Jun 9" / "Tomorrow, Jun 10" /
+/// "Yesterday, Jun 8" / "Tue, Jun 11".
+String relativeDayLabel(DateTime d) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(d.year, d.month, d.day);
+  final diff = day.difference(today).inDays;
+  if (diff == 0) return 'Today, ${monthDayLabel(d)}';
+  if (diff == 1) return 'Tomorrow, ${monthDayLabel(d)}';
+  if (diff == -1) return 'Yesterday, ${monthDayLabel(d)}';
+  return '${weekdayShort(d)}, ${monthDayLabel(d)}';
+}
+
+/// 12-hour clock label for a date, e.g. "2:00 PM".
+String timeLabel(DateTime d) {
+  final ampm = d.hour >= 12 ? 'PM' : 'AM';
+  var h = d.hour % 12;
+  if (h == 0) h = 12;
+  final m = d.minute.toString().padLeft(2, '0');
+  return '$h:$m $ampm';
+}
+
+/// Combines a picked [day] with a 12-hour slot label like "2:00 PM" into a
+/// real [DateTime]. Falls back to noon if the slot can't be parsed.
+DateTime slotDateTime(DateTime day, String slot) {
+  final match = RegExp(r'(\d{1,2}):(\d{2})\s*([AaPp][Mm])').firstMatch(slot);
+  if (match == null) return DateTime(day.year, day.month, day.day, 12);
+  var h = int.parse(match.group(1)!);
+  final m = int.parse(match.group(2)!);
+  final isPm = match.group(3)!.toUpperCase() == 'PM';
+  if (isPm && h != 12) h += 12;
+  if (!isPm && h == 12) h = 0;
+  return DateTime(day.year, day.month, day.day, h, m);
+}

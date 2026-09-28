@@ -74,9 +74,16 @@ class _MyAppointmentsScreenState extends ConsumerState<MyAppointmentsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final all = ref.watch(appointmentProvider);
+    // Resolve statuses on read: an upcoming appointment whose slot has passed
+    // is derived as completed automatically (free, client-side — no backend).
+    final all = ref.watch(appointmentProvider).map((a) => a.resolved()).toList();
     final upcoming = all.where((a) => a.status == AppointmentStatus.upcoming).toList();
-    final completed = all.where((a) => a.status == AppointmentStatus.completed).toList();
+    // "Past" groups both completed and (auto-derived / sample) missed visits.
+    final completed = all
+        .where((a) =>
+            a.status == AppointmentStatus.completed ||
+            a.status == AppointmentStatus.missed)
+        .toList();
     final cancelled = all.where((a) => a.status == AppointmentStatus.cancelled).toList();
 
     return Scaffold(

@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../providers/scan_provider.dart';
 
-class ScanScreen extends StatefulWidget {
+class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
 
   @override
-  State<ScanScreen> createState() => _ScanScreenState();
+  ConsumerState<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen>
+class _ScanScreenState extends ConsumerState<ScanScreen>
     with TickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
   late final AnimationController _scanCtrl;
@@ -121,8 +123,13 @@ class _ScanScreenState extends State<ScanScreen>
 
                 // Manual Search Card
                 _ManualSearchCard(
+                  recents: ref.watch(scanProvider).recentScans,
                   onSearchTap: () => context.push('/scan/manual'),
-                  onRecentTap: (_) => context.push('/scan/results'),
+                  onRecentTap: (term) {
+                    ref.read(scanProvider.notifier).setQuery(term);
+                    ref.read(scanProvider.notifier).recordScan(term);
+                    context.push('/scan/results');
+                  },
                 )
                     .animate()
                     .fadeIn(duration: 420.ms, delay: 180.ms)
@@ -528,15 +535,18 @@ class _OrDivider extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ManualSearchCard extends StatelessWidget {
+  final List<String> recents;
   final VoidCallback onSearchTap;
   final ValueChanged<String> onRecentTap;
 
   const _ManualSearchCard({
+    required this.recents,
     required this.onSearchTap,
     required this.onRecentTap,
   });
 
-  static const _recents = [
+  // Shown only until the user builds real scan history.
+  static const _defaultRecents = [
     'CeraVe Cleanser',
     'Niacinamide 10%',
     'SPF 50 Sunscreen',
@@ -545,6 +555,7 @@ class _ManualSearchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chips = recents.isNotEmpty ? recents.take(4).toList() : _defaultRecents;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -660,10 +671,10 @@ class _ManualSearchCard extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: List.generate(_recents.length, (i) {
+            children: List.generate(chips.length, (i) {
               return _RecentChip(
-                label: _recents[i],
-                onTap: () => onRecentTap(_recents[i]),
+                label: chips[i],
+                onTap: () => onRecentTap(chips[i]),
               )
                   .animate()
                   .fadeIn(duration: 300.ms, delay: Duration(milliseconds: 50 * i + 220))
@@ -746,7 +757,7 @@ class _QuickTipsSection extends StatelessWidget {
     _Tip(
       icon: Icons.auto_awesome_rounded,
       color: AppColors.primary,
-      text: 'DermIQ analyses 1,000+ ingredients in real time.',
+      text: 'DermIQ gives instant ingredient safety insights.',
     ),
   ];
 

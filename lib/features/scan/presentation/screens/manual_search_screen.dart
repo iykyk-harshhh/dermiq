@@ -6,16 +6,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../catalog/data/catalog_seed.dart';
+import '../../../catalog/domain/product.dart';
+import '../../data/product_scan_mapper.dart';
 import '../../providers/scan_provider.dart';
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-class _P {
-  final String name, brand, category;
-  final int    score;
-  final Color  color;
-  const _P(this.name, this.brand, this.category, this.score, this.color);
-}
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -33,18 +27,13 @@ class _ManualSearchScreenState extends ConsumerState<ManualSearchScreen> {
   // Search query + category filter live in scanProvider.
   static const _filters = scanCategories;
 
-  static const _recents = ['CeraVe', 'Niacinamide', 'SPF 50', 'Retinol Serum'];
-
-  static const _products = [
-    _P('CeraVe Foaming Facial Cleanser', 'CeraVe', 'Cleanser', 92, Color(0xFF0EA5E9)),
-    _P('The Ordinary Niacinamide 10% + Zinc', 'The Ordinary', 'Serum', 86, Color(0xFF8B5CF6)),
-    _P('Neutrogena Ultra Dry-Touch SPF 55', 'Neutrogena', 'Sunscreen', 78, Color(0xFFF59E0B)),
-    _P('La Roche-Posay Toleriane Moisturizer', 'La Roche-Posay', 'Moisturizer', 90, Color(0xFF22C55E)),
-    _P('Cetaphil Gentle Skin Cleanser', 'Cetaphil', 'Cleanser', 87, Color(0xFF06B6D4)),
-    _P("Paula's Choice 2% BHA Exfoliant", "Paula's Choice", 'Treatment', 82, Color(0xFFF43F5E)),
-    _P('Estée Lauder Advanced Night Repair', 'Estée Lauder', 'Serum', 88, Color(0xFF7C5CFF)),
-    _P('Clinique Moisture Surge 100H', 'Clinique', 'Moisturizer', 85, Color(0xFF10B981)),
+  // Fallback recents used only when the user has no real scan history yet.
+  static const _defaultRecents = [
+    'CeraVe', 'Niacinamide', 'SPF 50', 'Retinol',
   ];
+
+  // Real local product data — the offline seed catalog.
+  static final _products = catalogProducts;
 
   @override
   void initState() {
@@ -62,7 +51,7 @@ class _ManualSearchScreenState extends ConsumerState<ManualSearchScreen> {
 
   ScanNotifier get _notifier => ref.read(scanProvider.notifier);
 
-  List<_P> _filteredFor(ScanState scan) {
+  List<Product> _filteredFor(ScanState scan) {
     var list = _products.toList();
     if (scan.categoryIndex != 0) {
       list = list.where((p) => p.category == _filters[scan.categoryIndex]).toList();
@@ -194,9 +183,26 @@ class _ManualSearchScreenState extends ConsumerState<ManualSearchScreen> {
     );
   }
 
+  // Sets the query to a tapped term so results render inline on this screen.
+  void _searchFor(String term) {
+    _ctrl.text = term;
+    _ctrl.selection =
+        TextSelection.fromPosition(TextPosition(offset: term.length));
+    _notifier.setQuery(term);
+    _notifier.recordScan(term);
+  }
+
+  // Opens the analysis screen with THIS product's real data.
+  void _openProduct(Product product) {
+    context.push('/scan/analysis/${product.id}',
+        extra: scannedFromProduct(product));
+  }
+
   // Section rendered when no query — shows recent + popular
-  Widget _buildBrowseContent(List<_P> items, int i) {
+  Widget _buildBrowseContent(List<Product> items, int i) {
     if (i == 0) {
+      final history = ref.read(scanProvider).recentScans;
+      final recents = history.isNotEmpty ? history.take(6).toList() : _defaultRecents;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -205,10 +211,10 @@ class _ManualSearchScreenState extends ConsumerState<ManualSearchScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _recents
+            children: recents
                 .map((r) => _RecentChip(
                       label: r,
-                      onTap: () => context.push('/scan/results'),
+                      onTap: () => _searchFor(r),
                     ))
                 .toList(),
           ),
@@ -223,12 +229,12 @@ class _ManualSearchScreenState extends ConsumerState<ManualSearchScreen> {
     return _ProductItem(
       product: items[idx],
       index:   idx,
-      onTap:   () => context.push('/scan/analysis/p${idx + 1}'),
+      onTap:   () => _openProduct(items[idx]),
     );
   }
 
   // Section rendered when query is active
-  Widget _buildSearchContent(List<_P> items, int i) {
+  Widget _buildSearchContent(List<Product> items, int i) {
     if (i == 0) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -242,7 +248,7 @@ class _ManualSearchScreenState extends ConsumerState<ManualSearchScreen> {
     return _ProductItem(
       product: items[idx],
       index:   idx,
-      onTap:   () => context.push('/scan/analysis/p${idx + 1}'),
+      onTap:   () => _openProduct(items[idx]),
     );
   }
 }
@@ -375,7 +381,7 @@ class _RecentChip extends StatelessWidget {
 // ─── Product item ─────────────────────────────────────────────────────────────
 
 class _ProductItem extends StatelessWidget {
-  final _P         product;
+  final Product    product;
   final int        index;
   final VoidCallback onTap;
 

@@ -15,6 +15,9 @@ class PreferencesService {
   static const _kSettings = 'app_settings';
   static const _kQuiz = 'quiz_state';
   static const _kRoutineLog = 'routine_log';
+  static const _kRoutineSteps = 'routine_steps';
+  static const _kCheckInLog = 'checkin_log';
+  static const _kReminders = 'reminders_state';
 
   static SharedPreferences? _prefs;
 
@@ -66,6 +69,24 @@ class PreferencesService {
   static String? get routineLogJson => _prefs?.getString(_kRoutineLog);
   static Future<void> setRoutineLogJson(String v) async =>
       _prefs?.setString(_kRoutineLog, v);
+
+  /// User's custom AM/PM routine step definitions {`am`: [...], `pm`: [...]}
+  /// as JSON, so builder edits survive app restarts.
+  static String? get routineStepsJson => _prefs?.getString(_kRoutineSteps);
+  static Future<void> setRoutineStepsJson(String v) async =>
+      _prefs?.setString(_kRoutineSteps, v);
+
+  /// Per-date skin check-in scores {`yyyy-mm-dd`: score(0–100)} as JSON.
+  static String? get checkInLogJson => _prefs?.getString(_kCheckInLog);
+  static Future<void> setCheckInLogJson(String v) async =>
+      _prefs?.setString(_kCheckInLog, v);
+
+  /// Routine/check-in reminders: master toggle, repeat days, and the reminder
+  /// list, persisted as a JSON string so scheduled notifications survive
+  /// restarts and can be rescheduled on launch.
+  static String? get remindersJson => _prefs?.getString(_kReminders);
+  static Future<void> setRemindersJson(String v) async =>
+      _prefs?.setString(_kReminders, v);
 
   /// Clears per-session state on logout (keeps onboardingSeen so onboarding
   /// never reappears for a returning user — per the flow spec).

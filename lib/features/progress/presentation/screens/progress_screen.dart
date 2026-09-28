@@ -44,10 +44,17 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
   Widget build(BuildContext context) {
     final score = ref.watch(healthScoreProvider);
     final band = scoreBand(score);
-    // Score trend from the rolling routine history (oldest → newest).
+    // Range window for the selected Week/Month/Year toggle.
+    const rangeDays = [7, 30, 365];
+    final window = rangeDays[_viewIndex];
+    // Score trend from the rolling routine history (newest-first). Filter to the
+    // selected range, then order oldest → newest for the chart. Real data only —
+    // days with no computed score (0) are excluded.
     final trend = ref
         .watch(routineProvider)
         .history
+        .take(window)
+        .toList()
         .reversed
         .map((d) => d.score)
         .where((s) => s > 0)
@@ -297,11 +304,48 @@ class _ChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use the real score trend; fall back to a gentle placeholder if there's
-    // no routine history yet so the chart is never empty.
-    final data = scores.length >= 2
-        ? scores
-        : const [62, 66, 64, 70, 72, 75, 78, 82];
+    // Truthful low-data state — no fabricated curve. The trend only draws once
+    // there are at least two real scored days in the selected range.
+    if (scores.length < 2) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+        decoration: BoxDecoration(
+          color: context.dColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: context.dColors.cardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Score Trend',
+                style: AppTypography.labelMedium.copyWith(color: context.dColors.textPrimary)),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 140,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.show_chart_rounded,
+                        size: 34, color: context.dColors.textTertiary),
+                    const SizedBox(height: 10),
+                    Text('Not enough data yet',
+                        style: AppTypography.labelSmall
+                            .copyWith(color: context.dColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    Text('Complete your routine to build your trend',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.caption
+                            .copyWith(color: context.dColors.textTertiary)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final data = scores;
     final spots = [
       for (var i = 0; i < data.length; i++) FlSpot(i.toDouble(), data[i].toDouble()),
     ];

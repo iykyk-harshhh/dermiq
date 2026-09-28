@@ -68,18 +68,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
 
     final now = DateTime.now();
-    final brand = _brandCtrl.text.trim();
     ref.read(shelfProvider.notifier).addProduct(
           ShelfProduct(
             id: 'u${now.millisecondsSinceEpoch}',
             name: _nameCtrl.text.trim(),
-            brand: brand.isEmpty ? 'Unknown' : brand,
+            brand: _brandCtrl.text.trim(),
             category: _kCategories[_categoryIdx],
-            score: 80,
+            // Manually added products aren't analyzed, so there's no real
+            // safety signal — 0 marks it as "not yet scored" rather than
+            // implying an analysis was run.
+            score: 0,
             color: AppColors.primary,
             purchaseDate: _purchaseDate ?? now,
             expiryDate: _expiryDate ?? now.add(const Duration(days: 365)),
@@ -87,6 +87,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ),
         );
 
+    if (!mounted) return;
     setState(() => _saving = false);
     AppSnackbar.success(context, 'Product added to your shelf');
     context.pop();

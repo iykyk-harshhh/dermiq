@@ -13,16 +13,36 @@ import '../../data/shop_models.dart';
 import '../../providers/order_provider.dart';
 
 class OrderTrackingScreen extends ConsumerWidget {
-  final Order order;
+  /// Order id from the route path (`/order-tracking/:id`).
+  final String orderId;
 
-  const OrderTrackingScreen({super.key, required this.order});
+  /// The order passed via `extra` when navigating in-app. Used as a fallback
+  /// when the live provider list doesn't (yet) contain [orderId] — e.g. right
+  /// after placing an order, or offline.
+  final Order? fallback;
+
+  const OrderTrackingScreen({
+    super.key,
+    required this.orderId,
+    this.fallback,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dateShort = DateFormat('dd MMM yyyy');
 
-    // Determine the stage index (0-based) from order status
-    final stageIndex = _statusToStage(order.status);
+    // Watch the live order list so status changes (incl. time-based
+    // progression) reflect here; look up by id, then fall back to `extra`.
+    final orders = ref.watch(orderProvider);
+    final order = orders.where((o) => o.id == orderId).firstOrNull ?? fallback;
+
+    // Graceful deep-link / unknown-id state instead of crashing on a null order.
+    if (order == null) {
+      return _OrderNotFound(orderId: orderId);
+    }
+
+    // Determine the stage index (0-based) from the time-derived display status.
+    final stageIndex = _statusToStage(order.displayStatus);
 
     const stages = [
       (label: 'Order Placed', icon: Icons.receipt_long_rounded),
@@ -371,6 +391,79 @@ class OrderTrackingScreen extends ConsumerWidget {
       case OrderStatus.delivered:
         return 5;
     }
+  }
+}
+
+class _OrderNotFound extends StatelessWidget {
+  final String orderId;
+  const _OrderNotFound({required this.orderId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: context.dColors.background,
+      appBar: AppBar(
+        backgroundColor: context.dColors.surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: context.dColors.textPrimary, size: 20),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/orders'),
+        ),
+        title: Text('Track Order', style: AppTypography.h4),
+        centerTitle: true,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.sp24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: context.dColors.surfaceDim,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.receipt_long_outlined,
+                    color: AppColors.primary, size: 44),
+              ),
+              const SizedBox(height: AppConstants.sp20),
+              Text('Order not found', style: AppTypography.h3),
+              const SizedBox(height: AppConstants.sp8),
+              Text(
+                "We couldn't find an order for this link. It may have been "
+                'removed, or the link is no longer valid.',
+                style: AppTypography.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppConstants.sp24),
+              GestureDetector(
+                onTap: () => context.go('/orders'),
+                child: Container(
+                  height: 52,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.sp32),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.gradientPrimary,
+                    borderRadius:
+                        BorderRadius.circular(AppConstants.radiusButton),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text('View My Orders',
+                      style:
+                          AppTypography.button.copyWith(color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -40,6 +40,14 @@ const calMonthShort = [
 
 const calWeekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+/// Monday-first weekday headers, used when the user's First-Day-of-Week
+/// preference is "Monday".
+const calWeekDaysMon = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+/// Weekday header row respecting the [mondayFirst] preference.
+List<String> calWeekDaysFor({required bool mondayFirst}) =>
+    mondayFirst ? calWeekDaysMon : calWeekDays;
+
 const calWeekDaysFull = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ];
@@ -53,6 +61,13 @@ int calLeadingBlanks(DateTime month) {
   return first.weekday % 7; // Mon=1..Sun=7 → Sun=0
 }
 
+/// Number of empty leading cells before day 1, respecting the first-day-of-week
+/// preference. Monday-first: Mon=0..Sun=6; Sunday-first: Sun=0..Sat=6.
+int calLeadingBlanksFor(DateTime month, {required bool mondayFirst}) {
+  final first = DateTime(month.year, month.month, 1);
+  return mondayFirst ? first.weekday - 1 : first.weekday % 7;
+}
+
 int calDaysInMonth(DateTime month) =>
     DateTime(month.year, month.month + 1, 0).day;
 
@@ -61,8 +76,13 @@ int calDaysInMonth(DateTime month) =>
 /// Builds the calendar for [month] from the real routine-completion log
 /// (see `routine_log.dart`). Days with no logged activity are left neutral
 /// (no colour); logged days are coloured green/yellow/red by completion.
-List<CalendarDay> calGenerateMonth(DateTime month, {Map<String, List<bool>>? log}) {
+List<CalendarDay> calGenerateMonth(
+  DateTime month, {
+  Map<String, List<bool>>? log,
+  Map<String, int>? checkIns,
+}) {
   final data = log ?? routineLogLoad();
+  final checks = checkIns ?? checkInLogLoad();
   final days = calDaysInMonth(month);
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -71,7 +91,8 @@ List<CalendarDay> calGenerateMonth(DateTime month, {Map<String, List<bool>>? log
   for (var d = 1; d <= days; d++) {
     final date = DateTime(month.year, month.month, d);
     final isFuture = date.isAfter(today);
-    final entry = data[routineDayKey(date)];
+    final key = routineDayKey(date);
+    final entry = data[key];
     final hasData = entry != null && !isFuture;
 
     out.add(CalendarDay(
@@ -80,6 +101,7 @@ List<CalendarDay> calGenerateMonth(DateTime month, {Map<String, List<bool>>? log
       pmDone: hasData && entry[1],
       isFuture: isFuture,
       hasData: hasData,
+      skinScore: isFuture ? null : checks[key],
     ));
   }
   return out;
