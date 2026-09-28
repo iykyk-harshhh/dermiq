@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,11 +33,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   void _applyCode(String code) {
     if (code.isEmpty) return;
-    final success = ref.read(cartProvider.notifier).applyCoupon(code);
+    final result = ref.read(cartProvider.notifier).applyCoupon(code);
     setState(() {
-      _couponError = success ? null : 'Invalid coupon code';
+      _couponError = result.ok ? null : result.error;
     });
-    if (success) _couponController.clear();
+    if (result.ok) _couponController.clear();
   }
 
   void _applyCoupon() => _applyCode(_couponController.text.trim());
@@ -195,11 +196,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         .copyWith(color: AppColors.textOnDark)),
               ),
               const SizedBox(width: AppConstants.sp8),
-              Text('• ${Fmt.inr(cart.total)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.button
-                      .copyWith(color: AppColors.textOnDarkSub)),
+              _AnimatedPrice(
+                value: cart.total,
+                prefix: '• ',
+                style: AppTypography.button
+                    .copyWith(color: AppColors.textOnDarkSub),
+              ),
             ],
           ),
         ),
@@ -218,7 +220,25 @@ class _CartItemTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final product = item.product;
 
-    return Container(
+    return Dismissible(
+      key: ValueKey('cart_${product.id}'),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) {
+        HapticFeedback.mediumImpact();
+        ref.read(cartProvider.notifier).removeItem(product.id);
+      },
+      background: Container(
+        margin: const EdgeInsets.only(bottom: AppConstants.sp12),
+        padding: const EdgeInsets.only(right: 24),
+        alignment: Alignment.centerRight,
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        ),
+        child: const Icon(Icons.delete_outline_rounded,
+            color: AppColors.error, size: 24),
+      ),
+      child: Container(
       margin: const EdgeInsets.only(bottom: AppConstants.sp12),
       padding: const EdgeInsets.all(AppConstants.sp12),
       decoration: BoxDecoration(
@@ -305,6 +325,7 @@ class _CartItemTile extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     )
         .animate()
@@ -597,8 +618,8 @@ class _OrderSummaryCard extends StatelessWidget {
               Text('Total',
                   style: AppTypography.labelLarge
                       .copyWith(fontSize: 16)),
-              Text(
-                Fmt.inr(cart.total),
+              _AnimatedPrice(
+                value: cart.total,
                 style: AppTypography.labelLarge.copyWith(
                     fontSize: 18, color: AppColors.primary),
               ),
@@ -638,6 +659,36 @@ class _SummaryRow extends StatelessWidget {
               color: valueColor ?? context.dColors.textPrimary),
         ),
       ],
+    );
+  }
+}
+
+/// A price that smoothly counts up to its value — and animates from the old
+/// value to the new one whenever the cart total changes (quantity edits,
+/// coupons). Currency-formatted via [Fmt.inr].
+class _AnimatedPrice extends StatelessWidget {
+  final double value;
+  final TextStyle style;
+  final String prefix;
+
+  const _AnimatedPrice({
+    required this.value,
+    required this.style,
+    this.prefix = '',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: value),
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, _) => Text(
+        '$prefix${Fmt.inr(v)}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      ),
     );
   }
 }

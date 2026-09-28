@@ -34,62 +34,7 @@ class MyOrdersScreen extends ConsumerWidget {
           child: Container(height: 1, color: context.dColors.borderLight),
         ),
       ),
-      body: orders.isEmpty
-          ? _buildEmptyState(context)
-          : _buildOrderList(context, orders),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: context.dColors.surfaceDim,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.inventory_2_outlined,
-                color: AppColors.primary, size: 48),
-          )
-              .animate()
-              .scale(duration: 400.ms, curve: Curves.easeOut)
-              .fadeIn(duration: 400.ms),
-          const SizedBox(height: AppConstants.sp20),
-          Text('No orders yet',
-                  style: AppTypography.h4
-                      .copyWith(color: context.dColors.textSecondary))
-              .animate()
-              .fadeIn(delay: 200.ms, duration: 400.ms)
-              .slideY(begin: 0.2, end: 0),
-          const SizedBox(height: AppConstants.sp8),
-          Text('Your past orders will appear here',
-                  style: AppTypography.bodyMedium)
-              .animate()
-              .fadeIn(delay: 300.ms, duration: 400.ms),
-          const SizedBox(height: AppConstants.sp32),
-          GestureDetector(
-            onTap: () => context.go('/shelf'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.sp32,
-                  vertical: AppConstants.sp16),
-              decoration: BoxDecoration(
-                gradient: AppColors.gradientPrimary,
-                borderRadius:
-                    BorderRadius.circular(AppConstants.radiusButton),
-                boxShadow: context.dColors.cardShadow,
-              ),
-              child: Text('Start Shopping',
-                  style: AppTypography.button
-                      .copyWith(color: AppColors.textOnDark)),
-            ),
-          ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
-        ],
-      ),
+      body: _buildOrderList(context, orders),
     );
   }
 
@@ -164,7 +109,7 @@ class _OrderCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dateFormat = DateFormat('dd MMM yyyy');
-    final statusColor = _statusColor(order.status);
+    final statusColor = _statusColor(order.displayStatus);
     final visibleItems =
         order.items.length > 2 ? order.items.sublist(0, 2) : order.items;
     final extraCount = order.items.length - visibleItems.length;
@@ -209,7 +154,7 @@ class _OrderCard extends ConsumerWidget {
                       color: statusColor.withValues(alpha: 0.3)),
                 ),
                 child: Text(
-                  order.statusLabel,
+                  order.displayStatusLabel,
                   style: AppTypography.labelSmall
                       .copyWith(color: statusColor, fontSize: 11),
                 ),

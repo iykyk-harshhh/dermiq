@@ -166,6 +166,9 @@ class _SkinProfileCompleteScreenState
                         // Skipping still counts as "quizzes shown" — never reshow.
                         PreferencesService.setProfileComplete(true);
                         ref.read(profileCompleteProvider.notifier).state = true;
+                        // Mirror the skin profile to Firestore (offline-first;
+                        // no-op signed out / offline). Fire-and-forget.
+                        ref.read(quizProvider.notifier).syncToFirestore();
                         context.go('/home');
                       },
                       isOutlined: true,

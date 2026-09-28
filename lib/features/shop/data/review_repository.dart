@@ -51,8 +51,17 @@ class ReviewRepository {
         );
   }
 
-  Future<void> submit(String productId, String uid, ProductReview review) async {
-    await _col(productId)?.doc(uid).set(review.toMap());
+  /// Writes the review to Firestore. Returns true only when the write actually
+  /// lands; returns false when offline (no db / no-op) or if the write throws.
+  Future<bool> submit(String productId, String uid, ProductReview review) async {
+    final col = _col(productId);
+    if (col == null) return false; // offline / Firebase unavailable — no-op.
+    try {
+      await col.doc(uid).set(review.toMap());
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }
 

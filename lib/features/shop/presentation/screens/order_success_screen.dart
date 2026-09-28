@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -9,15 +10,31 @@ import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../data/shop_models.dart';
+import '../../providers/order_provider.dart';
 
-class OrderSuccessScreen extends StatelessWidget {
-  final Order order;
+class OrderSuccessScreen extends ConsumerWidget {
+  /// The order passed via `extra` right after placing it. Used to identify the
+  /// live order in the provider and as a fallback when it isn't in the list.
+  final Order? fallback;
 
-  const OrderSuccessScreen({super.key, required this.order});
+  const OrderSuccessScreen({super.key, this.fallback});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dateFormat = DateFormat('dd MMM yyyy');
+
+    // Watch the live order list so the shown status stays current; resolve by
+    // the fallback order's id, then fall back to the passed-in order itself.
+    final orders = ref.watch(orderProvider);
+    final order = (fallback != null
+            ? orders.where((o) => o.id == fallback!.id).firstOrNull
+            : null) ??
+        fallback;
+
+    // Graceful state for a deep-link / unknown order instead of a null crash.
+    if (order == null) {
+      return _OrderSuccessNotFound();
+    }
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -102,7 +119,7 @@ class OrderSuccessScreen extends StatelessWidget {
                                 AppConstants.radiusButton),
                           ),
                           child: Text(
-                            order.statusLabel,
+                            order.displayStatusLabel,
                             style: AppTypography.labelSmall
                                 .copyWith(color: AppColors.success),
                           ),
@@ -207,6 +224,65 @@ class OrderSuccessScreen extends StatelessWidget {
 
               const SizedBox(height: AppConstants.sp24),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OrderSuccessNotFound extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: context.dColors.background,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.sp24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: context.dColors.surfaceDim,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.receipt_long_outlined,
+                      color: AppColors.primary, size: 44),
+                ),
+                const SizedBox(height: AppConstants.sp20),
+                Text('Order not found', style: AppTypography.h3),
+                const SizedBox(height: AppConstants.sp8),
+                Text(
+                  "We couldn't find this order. It may have been removed, or "
+                  'the link is no longer valid.',
+                  style: AppTypography.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppConstants.sp24),
+                GestureDetector(
+                  onTap: () => context.go('/orders'),
+                  child: Container(
+                    height: 52,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.sp32),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.gradientPrimary,
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusButton),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text('View My Orders',
+                        style: AppTypography.button
+                            .copyWith(color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

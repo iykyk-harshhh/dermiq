@@ -1,0 +1,87 @@
+{
+  "@@locale": "en",
+  "appName": "DermIQ",
+  "@appName": {
+    "description": "The application name."
+  },
+
+  "settings": "Settings",
+  "preferences": "Preferences",
+  "privacyAndData": "Privacy & Data",
+  "notifications": "Notifications",
+  "themeAndAppearance": "Theme & Appearance",
+  "helpAndSupport": "Help & Support",
+  "aboutDermIQ": "About DermIQ",
+
+  "sectionAccount": "Account",
+  "sectionApp": "App",
+  "sectionSupport": "Support",
+
+  "editProfile": "Edit Profile",
+  "skinProfile": "Skin Profile",
+  "hairProfile": "Hair Profile",
+  "myAppointments": "My Appointments",
+
+  "signOut": "Sign Out",
+  "signOutConfirmTitle": "Sign Out?",
+  "signOutConfirmMessage": "You can sign back in anytime.",
+
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "done": "Done",
+
+  "navHome": "Home",
+  "navScan": "Scan",
+  "navRoutine": "Routine",
+  "navShelf": "Shelf",
+  "navProfile": "Profile",
+
+  "preferencesIntro": "Personalize how DermIQ reminds, alerts and measures things for you.",
+  "routineReminders": "Routine Reminders",
+  "amRoutine": "AM Routine",
+  "amRoutineSubtitle": "Morning nudge at 7:00 AM",
+  "pmRoutine": "PM Routine",
+  "pmRoutineSubtitle": "Evening nudge at 9:30 PM",
+  "skinCheckIn": "Skin Check-In",
+  "skinCheckInSubtitle": "Daily mood & skin rating",
+
+  "productExpiryAlerts": "Product Expiry Alerts",
+  "productExpiryAlertsSubtitle": "Warn me before products expire",
+  "weeklyScoreUpdates": "Weekly Score Updates",
+  "weeklyScoreUpdatesSubtitle": "Your skin score summary",
+  "tipsAndArticles": "Tips & Articles",
+  "tipsAndArticlesSubtitle": "Skincare reads picked for you",
+  "appointmentReminders": "Appointment Reminders",
+  "appointmentRemindersSubtitle": "Before specialist consultations",
+
+  "unitsAndRegion": "Units & Region",
+  "currency": "Currency",
+  "volumeUnits": "Volume Units",
+  "firstDayOfWeek": "First Day of Week",
+  "language": "Language",
+  "sunday": "Sunday",
+  "monday": "Monday",
+
+  "moreSettings": "More Settings",
+  "notificationSettings": "Notification Settings",
+  "preferencesSavedAutomatically": "Preferences are saved automatically",
+
+  "privacyBanner": "Your skin photos and health data are encrypted and never sold.",
+  "dataUsage": "Data Usage",
+  "analytics": "Analytics",
+  "analyticsSubtitle": "Help us improve the app",
+  "personalization": "Personalization",
+  "personalizationSubtitle": "Use my data for recommendations",
+  "shareWithPartners": "Share with Partners",
+  "shareWithPartnersSubtitle": "Anonymized data for research",
+  "security": "Security",
+  "biometricLock": "Biometric Lock",
+  "biometricLockSubtitle": "Require Face/Touch ID to open",
+  "yourData": "Your Data",
+  "downloadMyData": "Download My Data",
+  "deleteMyAccount": "Delete My Account",
+  "policies": "Policies",
+  "privacyPolicy": "Privacy Policy",
+  "termsOfService": "Terms of Service"
+}

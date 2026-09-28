@@ -19,11 +19,16 @@ class _EditSkinProfileScreenState extends ConsumerState<EditSkinProfileScreen> {
   bool _saving = false;
 
   static const _skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive'];
+  // Must match the quiz's canonical label set (skin_concerns_screen.dart) so
+  // edited concerns round-trip and re-select correctly.
   static const _concerns = [
-    'Acne', 'Hyperpigmentation', 'Aging', 'Redness', 'Dullness', 'Pores', 'Dark Spots'
+    'Acne', 'Dark Spots', 'Fine Lines', 'Redness',
+    'Dullness', 'Large Pores', 'Dehydration', 'Texture'
   ];
   static const _allergies = ['Fragrance', 'Sulfates', 'Parabens', 'Alcohol', 'None'];
-  static const _fitz = ['Type I', 'Type II', 'Type III', 'Type IV', 'Type V', 'Type VI'];
+  // Canonical Fitzpatrick values are the roman numerals the quiz stores and the
+  // _FitzChip maps on ('I'..'VI'), so edited values round-trip.
+  static const _fitz = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 
   Future<void> _save() async {
     setState(() => _saving = true);

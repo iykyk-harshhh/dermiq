@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,9 +31,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   late final AnimationController _sphereCtrl;
   late final AnimationController _pulseCtrl;
 
+  // DEMO ACCOUNT: pre-filled so tapping Sign In logs straight into a real
+  // (free-tier) Firebase session. Remove these two constants + the demo path in
+  // _submit to restore a blank login form.
+  static const _demoEmail = 'demo@dermiq.app';
+  static const _demoPass = 'Demo@1234';
+  static const _demoName = 'Demo User';
+
   @override
   void initState() {
     super.initState();
+    // Debug only: pre-fill the demo credentials so the form is ready on open.
+    // Release builds ship with a blank form.
+    if (kDebugMode) {
+      _emailCtrl.text = _demoEmail;
+      _passCtrl.text = _demoPass;
+    }
     _sphereCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -53,6 +67,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _submit() async {
+    // Debug only: one-tap demo login — sign into the shared demo account
+    // (creating it once on first run) and go straight to Home. Release builds
+    // fall through to normal validated email/password sign-in below.
+    if (kDebugMode) {
+      setState(() => _loading = true);
+      final auth = ref.read(authProvider);
+      try {
+        try {
+          await auth.signInWithEmail(_demoEmail, _demoPass);
+        } catch (e) {
+          final s = e.toString().toLowerCase();
+          // First run: the demo account doesn't exist yet — create it.
+          if (s.contains('invalid-credential') || s.contains('user-not-found')) {
+            await auth.signUpWithEmail(_demoEmail, _demoPass,
+                displayName: _demoName);
+          } else {
+            rethrow;
+          }
+        }
+        if (!mounted) return;
+        context.go('/home');
+      } catch (e) {
+        if (!mounted) return;
+        _showError(_authError(e));
+      } finally {
+        if (mounted) setState(() => _loading = false);
+      }
+      return;
+    }
+
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
     try {

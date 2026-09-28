@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/preferences_service.dart';
+import '../../../core/firebase/repositories/user_repository.dart';
+import '../../auth/providers/auth_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  QUIZ STATE  — skin + hair profile
@@ -93,6 +95,47 @@ class QuizState {
         'hairTreatments': hairTreatments,
       };
 
+  /// True when any skin/hair/profile answer is present — used to decide whether
+  /// a remote Firestore doc is worth hydrating from.
+  bool get hasAnyProfileData =>
+      name != null ||
+      gender != null ||
+      email != null ||
+      age != null ||
+      skinType != null ||
+      skinConcerns.isNotEmpty ||
+      skinAllergies.isNotEmpty ||
+      fitzpatrick != null ||
+      hairType != null ||
+      scalpType != null ||
+      hairConcerns.isNotEmpty ||
+      hairTreatments.isNotEmpty;
+
+  /// Merges a remote profile into this local one: remote values win when present
+  /// (non-null / non-empty), otherwise the local cache value is kept. This lets
+  /// a returning user on a new device pull their saved profile without wiping any
+  /// answer the remote doc happens to be missing.
+  QuizState mergeRemote(QuizState remote) => QuizState(
+        name: remote.name ?? name,
+        gender: remote.gender ?? gender,
+        email: remote.email ?? email,
+        age: remote.age ?? age,
+        skinType: remote.skinType ?? skinType,
+        skinConcerns:
+            remote.skinConcerns.isNotEmpty ? remote.skinConcerns : skinConcerns,
+        skinAllergies: remote.skinAllergies.isNotEmpty
+            ? remote.skinAllergies
+            : skinAllergies,
+        fitzpatrick: remote.fitzpatrick ?? fitzpatrick,
+        hairType: remote.hairType ?? hairType,
+        scalpType: remote.scalpType ?? scalpType,
+        hairConcerns:
+            remote.hairConcerns.isNotEmpty ? remote.hairConcerns : hairConcerns,
+        hairTreatments: remote.hairTreatments.isNotEmpty
+            ? remote.hairTreatments
+            : hairTreatments,
+      );
+
   factory QuizState.fromMap(Map<String, dynamic> m) {
     List<String> list(String k) =>
         (m[k] as List?)?.whereType<String>().toList() ?? const [];
@@ -114,7 +157,9 @@ class QuizState {
 }
 
 class QuizNotifier extends StateNotifier<QuizState> {
-  QuizNotifier() : super(_load());
+  QuizNotifier(this._ref) : super(_load());
+
+  final Ref _ref;
 
   /// Loads persisted answers (synchronous — `PreferencesService` is ready at
   /// startup) so the skin/hair profile survives restarts.
@@ -174,7 +219,45 @@ class QuizNotifier extends StateNotifier<QuizState> {
     state = const QuizState();
     PreferencesService.setQuizJson(jsonEncode(const QuizState().toMap()));
   }
+
+  // ── Firestore sync (offline-first) ──────────────────────────────────────────
+  // Prefs remain the local cache/source-of-truth; these mirror to / hydrate from
+  // `users/{uid}` so the profile survives reinstall and follows the user across
+  // devices. All are safe no-ops when signed out or Firebase is unavailable.
+
+  UserRepository? get _repo => _ref.read(userRepositoryProvider);
+  String? get _uid => _ref.read(authStateProvider)?.id;
+
+  /// Mirrors the current quiz answers to Firestore. No-op offline / signed out.
+  Future<void> syncToFirestore() async {
+    final uid = _uid;
+    final repo = _repo;
+    if (uid == null || repo == null) return;
+    try {
+      await repo.saveProfileAnswers(uid, state.toMap());
+    } catch (_) {
+      // Best-effort: local prefs cache already holds the answers.
+    }
+  }
+
+  /// Pulls the saved profile from Firestore and merges it into local state (and
+  /// the prefs cache) so a returning user on a new device recovers their answers.
+  /// No-op offline / signed out / when the remote doc has no profile data.
+  Future<void> hydrateFromFirestore() async {
+    final uid = _uid;
+    final repo = _repo;
+    if (uid == null || repo == null) return;
+    try {
+      final data = await repo.fetchProfileAnswers(uid);
+      if (data == null) return;
+      final remote = QuizState.fromMap(data);
+      if (!remote.hasAnyProfileData) return;
+      _set(state.mergeRemote(remote));
+    } catch (_) {
+      // Best-effort: fall back to whatever the local prefs cache holds.
+    }
+  }
 }
 
-final quizProvider =
-    StateNotifierProvider<QuizNotifier, QuizState>((_) => QuizNotifier());
+final quizProvider = StateNotifierProvider<QuizNotifier, QuizState>(
+    (ref) => QuizNotifier(ref));

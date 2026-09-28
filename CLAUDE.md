@@ -5,36 +5,30 @@
 - Riverpod — `StateProvider`, `StateNotifierProvider`, `AsyncNotifier`
 - GoRouter — `StatefulShellRoute` for bottom nav, top-level routes for modals/detail screens
 - Firebase — Auth, Firestore, Storage, FCM, Analytics, Crashlytics (wired in `core/firebase/` with graceful mock fallback until `flutterfire configure`)
-- Google Fonts — Poppins (app UI) via `GoogleFonts.poppinsTextTheme()`; the splash uses **Inter** (tagline/body/button) + **Playfair Display** (logo) per its motion-graphics spec
+- Google Fonts — **Playfair Display** for display/headings + **Poppins** for body/UI, defined in `AppTypography`; `AppTheme` applies `GoogleFonts.poppinsTextTheme()` as the base
 - fl_chart — Line, Radar charts in Analysis and Progress screens
 
 ## Design System
-- Colors: `AppColors` in `lib/core/theme/app_colors.dart`
-- Text: `AppTextStyles` (getters, not const) in `lib/core/theme/app_text_styles.dart`
+- Colors: `AppColors` in `lib/core/theme/app_colors.dart` (+ theme-aware `dermiq_colors.dart` via `context.dColors`)
+- Text: `AppTypography` (getters, not const) in `lib/core/theme/app_typography.dart` — headings Playfair, body Poppins. (`app_text_styles.dart` is a legacy re-export shim; prefer `AppTypography`.)
 - Theme: `AppTheme.light` applied in `main.dart`
 - Spacing constants: `AppConstants.sp4` … `AppConstants.sp48`
 - Border radius: cards=24, buttons=28, inputs=20
 - Shadows: soft only — `AppColors.primary.withValues(0.06)` pattern
 - Gradients: `AppColors.gradientPrimary`, `gradientSurface`, `gradientHero`
 
-## Splash Screen (motion-graphics build)
+## Splash Screen (video motion-graphic)
 The routed splash (`/splash` → `features/auth/presentation/screens/splash_screen.dart`)
-is a hand-built particle-motion screen — no Lottie/Rive, all `CustomPainter` +
-`AnimationController`. Every flow funnels through one **Get Started** CTA (shown to all users); tapping it routes via the SplashController — see Auth & Startup Flow.
-- Background `#F5F1FF`; logo ink `#2F216F` (dark purple, painted via `ShaderMask` gradient → primary); primary/sparkle/subtitle `#6C4BFF`; divider `#B084FF`. Tagline sits in a frosted-glass `BackdropFilter` card.
-- Components in `features/auth/presentation/widgets/`:
-  - `particle_face_painter.dart` — right-facing AI face from ~900 particles + flowing hair (generated once, animated per-frame).
-  - `floating_spheres.dart` — 3 gradient spheres, 6s float loop.
-  - `animated_mesh.dart` — bottom-25% purple wave-glow mesh.
-  - `glowing_button.dart` — pill CTA, breathing scale 1.0→1.03 (2.5s), pulsing glow.
-- Editing the splash? Keep it visually identical to the spec; don't simplify the painter.
+plays a pre-rendered motion graphic via `video_player` (`VideoPlayerController.asset('assets/videos/splash.mp4')`). `FlutterNativeSplash.preserve` holds the OS launch screen until the video is decoded (with a safety timeout) so there's no static-frame flash. Every flow funnels through one **Get Started** CTA (shown to all users); tapping it routes via the SplashController — see Auth & Startup Flow.
+- The earlier hand-built `CustomPainter` particle version was replaced by the video. Its widgets still live in `features/auth/presentation/widgets/` (`particle_face_painter.dart`, `floating_spheres.dart`, `animated_mesh.dart`, `glowing_button.dart`) but are **no longer wired into the splash** — treat them as legacy/unused unless re-adopted.
+- Editing the splash? It's now a video asset — replace `assets/videos/splash.mp4` (keep the same path) rather than editing painter code.
 
 ## Rules
 - No placeholder code — every screen is real and navigable
 - No direct `Card` or `Material` widgets in feature code — use `AppCard` or `GlassCard`
 - No `withValues` on new code — use `.withValues(alpha:)` instead
-- No Firebase calls until `google-services.json` is committed
-- Text styles come from `AppTextStyles`, not inline `TextStyle(fontFamily: ...)`
+- Firebase IS configured (`google-services.json` + `firebase_options.dart` present) — real Auth/Firestore/Storage/FCM are live, with graceful mock fallback when unavailable. (The old "no Firebase until committed" rule is superseded.)
+- Text styles come from `AppTypography`, not inline `TextStyle(fontFamily: ...)`
 - All async navigation after `await` must guard with `if (context.mounted)`
 - Riverpod: read providers with `ref.watch` in build, `ref.read` in callbacks
 - Routes: named constants not hardcoded strings — add to `AppConstants` if reused

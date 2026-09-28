@@ -6,9 +6,9 @@ import '../data/appointment_repository.dart';
 import '../data/specialist_models.dart';
 
 /// The user's appointments. Streams from Firestore (`users/{uid}/appointments`)
-/// when signed in; falls back to the sample list when signed out / offline so
-/// the screen is never empty during the demo. A brand-new user with no booked
-/// appointments also sees the sample list until they book their first one.
+/// when signed in — showing the user's REAL list, including a genuinely empty
+/// one (the screen renders its own empty state). The sample list is used only
+/// for the signed-out / offline demo case, where there is no account to read.
 class AppointmentNotifier extends Notifier<List<Appointment>> {
   AppointmentRepository get _repo => ref.read(appointmentRepositoryProvider);
   String? get _uid => ref.read(authStateProvider)?.id;
@@ -17,11 +17,12 @@ class AppointmentNotifier extends Notifier<List<Appointment>> {
   List<Appointment> build() {
     final uid = ref.watch(authStateProvider)?.id;
     if (uid != null && _repo.isOnline) {
-      final sub = _repo.watch(uid).listen((appts) {
-        state = appts.isNotEmpty ? appts : List.of(myAppointmentsMock);
-      });
+      // Signed in + online → the user's real appointments (may be empty).
+      final sub = _repo.watch(uid).listen((appts) => state = appts);
       ref.onDispose(sub.cancel);
+      return const <Appointment>[];
     }
+    // Signed out / offline demo → sample data so the screen isn't blank.
     return List.of(myAppointmentsMock);
   }
 
@@ -30,11 +31,11 @@ class AppointmentNotifier extends Notifier<List<Appointment>> {
     final appt = Appointment(
       id: 'appt_${DateTime.now().millisecondsSinceEpoch}',
       specialistId: draft.specialistId,
-      dateLabel: draft.dateLabel,
-      time: draft.time,
+      startAt: draft.startAt,
       consultType: draft.consultType,
       durationMin: draft.durationMin,
       status: AppointmentStatus.upcoming,
+      reason: draft.reason,
     );
     state = [appt, ...state];
     final uid = _uid;

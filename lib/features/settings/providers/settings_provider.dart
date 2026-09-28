@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/preferences_service.dart';
+import '../../../core/utils/formatters.dart';
 
 /// App-wide settings: notification toggles, privacy choices and user
 /// preferences (units / region). Single source of truth for the three
@@ -185,19 +186,36 @@ class SettingsNotifier extends Notifier<SettingsState> {
   @override
   SettingsState build() {
     final raw = PreferencesService.settingsJson;
-    if (raw == null || raw.isEmpty) return const SettingsState();
-    try {
-      return SettingsState.fromMap(jsonDecode(raw) as Map<String, dynamic>);
-    } catch (_) {
-      return const SettingsState();
+    SettingsState s;
+    if (raw == null || raw.isEmpty) {
+      s = const SettingsState();
+    } else {
+      try {
+        s = SettingsState.fromMap(jsonDecode(raw) as Map<String, dynamic>);
+      } catch (_) {
+        s = const SettingsState();
+      }
     }
+    // Sync the app-wide display formatters to the loaded prefs so currency /
+    // volume units render correctly from first paint. (localeProvider watches
+    // this notifier, and main.dart watches localeProvider, so this build runs
+    // at startup.)
+    _syncFormatters(s);
+    return s;
   }
 
   /// Generic, copyWith-style mutation — keeps the API small while supporting
   /// every field. Usage: `edit((s) => s.copyWith(analytics: v))`.
   void edit(SettingsState Function(SettingsState s) update) {
     state = update(state);
+    _syncFormatters(state);
     PreferencesService.setSettingsJson(jsonEncode(state.toMap()));
+  }
+
+  /// Pushes the currency + volume-unit choices into [Fmt]'s static formatters.
+  void _syncFormatters(SettingsState s) {
+    Fmt.setCurrency(s.currency);
+    Fmt.setVolumeUnit(s.volumeUnit);
   }
 }
 

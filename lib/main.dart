@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'l10n/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_typography.dart';
 import 'core/router/app_router.dart';
 import 'core/services/preferences_service.dart';
+import 'core/services/notification_service.dart';
+import 'core/widgets/biometric_gate.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/firebase/messaging_service.dart';
 import 'core/firebase/repositories/user_repository.dart';
 import 'features/auth/providers/auth_provider.dart';
+import 'features/settings/providers/locale_provider.dart';
 import 'features/settings/providers/theme_provider.dart';
 
 void main() async {
@@ -39,14 +43,33 @@ void main() async {
   // firebase_options.dart aren't set up yet. Crashlytics handlers wire inside.
   await FirebaseBootstrap.init();
 
+  // Local notifications: timezone DB, Android channels, permission request.
+  // Free / on-device; safe no-op if permission is denied.
+  await NotificationService.instance.init();
+
   runApp(const ProviderScope(child: DermIQApp()));
 }
 
-class DermIQApp extends ConsumerWidget {
+class DermIQApp extends ConsumerStatefulWidget {
   const DermIQApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DermIQApp> createState() => _DermIQAppState();
+}
+
+class _DermIQAppState extends ConsumerState<DermIQApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Display FCM messages that arrive while the app is foregrounded (via local
+    // notifications). Once-only; no-op when Firebase isn't configured.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(messagingServiceProvider)?.initForeground();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Instantiate the auth service so its Firebase authStateChanges listener
     // starts mirroring sign-in state into authStateProvider.
     ref.watch(authProvider);
@@ -54,11 +77,12 @@ class DermIQApp extends ConsumerWidget {
     // When a user signs in, register for push and persist their FCM token.
     ref.listen<AppUser?>(authStateProvider, (prev, next) {
       if (next != null && prev?.id != next.id) {
-        _registerPush(ref, next.id);
+        _registerPush(next.id);
       }
     });
 
     final router = ref.watch(routerProvider);
+    final locale = ref.watch(localeProvider);
     final themeAsync = ref.watch(themeProvider);
     final themeMode = themeAsync.valueOrNull?.flutterMode ?? ThemeMode.light;
 
@@ -75,12 +99,18 @@ class DermIQApp extends ConsumerWidget {
       // Switch themes instantly — the default ~200ms cross-fade lerps every
       // colour across the whole tree each frame and felt laggy.
       themeAnimationDuration: Duration.zero,
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      // Gate the whole app behind the biometric lock when the user enabled it.
+      builder: (context, child) =>
+          BiometricGate(child: child ?? const SizedBox.shrink()),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );
   }
 
-  Future<void> _registerPush(WidgetRef ref, String uid) async {
+  Future<void> _registerPush(String uid) async {
     final messaging = ref.read(messagingServiceProvider);
     final users = ref.read(userRepositoryProvider);
     if (messaging == null || users == null) return;

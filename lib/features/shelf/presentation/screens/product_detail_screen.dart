@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../data/shelf_models.dart';
 import '../../providers/shelf_provider.dart';
 
@@ -66,6 +68,131 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     );
   }
 
+  /// Edit the product's own details (name, notes, purchase + expiry dates) in a
+  /// bottom sheet; saves through the shelf provider (persists to Firestore).
+  void _editProduct() {
+    final p = _product;
+    if (p == null) return;
+    final nameCtrl = TextEditingController(text: p.name);
+    final notesCtrl = TextEditingController(text: p.notes);
+    var purchase = p.purchaseDate;
+    var expiry = p.expiryDate;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheet) {
+            final c = sheetCtx.dColors;
+
+            Future<void> pickDate(bool isPurchase) async {
+              final now = DateTime.now();
+              final picked = await showDatePicker(
+                context: sheetCtx,
+                initialDate: isPurchase ? purchase : expiry,
+                firstDate: DateTime(2015),
+                lastDate: DateTime(now.year + 10),
+                helpText: isPurchase ? 'Purchase date' : 'Expiry date',
+              );
+              if (picked != null) {
+                setSheet(() => isPurchase ? purchase = picked : expiry = picked);
+              }
+            }
+
+            Widget dateRow(String label, DateTime value, bool isPurchase) {
+              return GestureDetector(
+                onTap: () => pickDate(isPurchase),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: c.surfaceDim,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(isPurchase ? Icons.shopping_bag_outlined : Icons.event_busy_outlined,
+                          size: 18, color: c.textSecondary),
+                      const SizedBox(width: 10),
+                      Text(label,
+                          style: AppTypography.bodyMedium.copyWith(color: c.textSecondary)),
+                      const Spacer(),
+                      Text(Fmt.date(value),
+                          style: AppTypography.labelMedium.copyWith(color: c.textPrimary)),
+                      const SizedBox(width: 6),
+                      Icon(Icons.calendar_today_rounded, size: 14, color: c.textTertiary),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: c.borderMedium,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text('Edit Product', style: AppTypography.h4),
+                    const SizedBox(height: 18),
+                    Text('Name', style: AppTypography.labelMedium),
+                    const SizedBox(height: 8),
+                    _SheetField(controller: nameCtrl, hint: 'Product name'),
+                    const SizedBox(height: 16),
+                    Text('Notes', style: AppTypography.labelMedium),
+                    const SizedBox(height: 8),
+                    _SheetField(
+                        controller: notesCtrl,
+                        hint: 'Add a note (e.g. opened, travel size)',
+                        maxLines: 3),
+                    const SizedBox(height: 16),
+                    dateRow('Purchased', purchase, true),
+                    const SizedBox(height: 10),
+                    dateRow('Expires', expiry, false),
+                    const SizedBox(height: 22),
+                    AppButton(
+                      label: 'Save Changes',
+                      onPressed: () {
+                        final name = nameCtrl.text.trim();
+                        ref.read(shelfProvider.notifier).updateProduct(
+                              widget.productId,
+                              name: name.isEmpty ? null : name,
+                              notes: notesCtrl.text.trim(),
+                              purchaseDate: purchase,
+                              expiryDate: expiry,
+                            );
+                        Navigator.pop(sheetCtx);
+                        AppSnackbar.success(context, 'Product updated');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(shelfProvider); // rebuild on shelf changes (favourite, delete)
@@ -80,7 +207,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
       backgroundColor: context.dColors.background,
       body: CustomScrollView(
         slivers: [
-          _HeroAppBar(product: product, onBack: () => context.pop(), onDelete: _confirmDelete),
+          _HeroAppBar(
+              product: product,
+              onBack: () => context.pop(),
+              onDelete: _confirmDelete,
+              onEdit: _editProduct),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             sliver: SliverList(
@@ -124,8 +255,14 @@ class _HeroAppBar extends StatelessWidget {
   final ShelfProduct product;
   final VoidCallback onBack;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
-  const _HeroAppBar({required this.product, required this.onBack, required this.onDelete});
+  const _HeroAppBar({
+    required this.product,
+    required this.onBack,
+    required this.onDelete,
+    required this.onEdit,
+  });
 
   Color get _scoreColor {
     if (product.score >= 85) return AppColors.success;
@@ -141,19 +278,7 @@ class _HeroAppBar extends StatelessWidget {
       backgroundColor: const Color(0xFF1E1B4B),
       leading: _CircleBtn(icon: Icons.arrow_back_rounded, onTap: onBack),
       actions: [
-        _CircleBtn(
-          icon: Icons.edit_outlined,
-          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Editing ${product.name}…',
-                  style: AppTypography.bodySmall.copyWith(color: Colors.white)),
-              backgroundColor: AppColors.primary,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ),
+        _CircleBtn(icon: Icons.edit_outlined, onTap: onEdit),
         _CircleBtn(icon: Icons.delete_outline_rounded, onTap: onDelete),
         const SizedBox(width: 8),
       ],
@@ -337,6 +462,42 @@ class _CircleBtn extends StatelessWidget {
           border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+}
+
+/// Text field used inside the Edit-product bottom sheet.
+class _SheetField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final int maxLines;
+
+  const _SheetField({
+    required this.controller,
+    required this.hint,
+    this.maxLines = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.dColors;
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surfaceDim,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.borderLight),
+      ),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        style: AppTypography.bodyMedium.copyWith(color: c.textPrimary),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: AppTypography.bodyMedium.copyWith(color: c.textTertiary),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
       ),
     );
   }

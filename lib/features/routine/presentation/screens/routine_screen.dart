@@ -7,23 +7,12 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../data/routine_models.dart';
+import '../../providers/routine_provider.dart';
 import '../../../streak/data/streak_models.dart';
 import '../../../streak/providers/streak_provider.dart';
 
 class RoutineScreen extends ConsumerWidget {
   const RoutineScreen({super.key});
-
-  static int _computeStreak() {
-    int s = 0;
-    for (final d in routineHistory) {
-      if (d.anyDone) {
-        s++;
-      } else {
-        break;
-      }
-    }
-    return s;
-  }
 
   static String _greeting() {
     final h = DateTime.now().hour;
@@ -41,13 +30,14 @@ class RoutineScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final streak = _computeStreak();
-    final today = routineHistory.isNotEmpty
-        ? routineHistory.first
-        : const RoutineDay('Today', false, false, 0);
-    final last7 = routineHistory.take(7).toList();
-    final amTotal = amSteps.fold(0, (s, e) => s + e.durationMin);
-    final pmTotal = pmSteps.fold(0, (s, e) => s + e.durationMin);
+    final routine = ref.watch(routineProvider);
+    final streak = routine.currentStreak;
+    final today = routine.today;
+    final last7 = routine.history.take(7).toList();
+    final amCount = routine.amSteps.length;
+    final pmCount = routine.pmSteps.length;
+    final amTotal = routine.minutesFor(true);
+    final pmTotal = routine.minutesFor(false);
     final streakAsync = ref.watch(streakProvider);
 
     // Show reward unlock sheet when a milestone is freshly hit.
@@ -86,7 +76,7 @@ class RoutineScreen extends ConsumerWidget {
                       children: [
                         Text('My Routine', style: AppTypography.h3),
                         Text(
-                          '${amSteps.length} AM · ${pmSteps.length} PM steps',
+                          '$amCount AM · $pmCount PM steps',
                           style: AppTypography.caption.copyWith(color: context.dColors.textSecondary),
                         ),
                       ],
@@ -150,7 +140,7 @@ class RoutineScreen extends ConsumerWidget {
                           Expanded(
                             child: _RoutineCard(
                               isAm: true, isDone: today.amDone,
-                              stepCount: amSteps.length, totalMin: amTotal,
+                              stepCount: amCount, totalMin: amTotal,
                               onTap: () => context.push('/routine/am'),
                             ),
                           ),
@@ -158,7 +148,7 @@ class RoutineScreen extends ConsumerWidget {
                           Expanded(
                             child: _RoutineCard(
                               isAm: false, isDone: today.pmDone,
-                              stepCount: pmSteps.length, totalMin: pmTotal,
+                              stepCount: pmCount, totalMin: pmTotal,
                               onTap: () => context.push('/routine/pm'),
                             ),
                           ),

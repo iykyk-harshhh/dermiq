@@ -50,11 +50,11 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
     final type = consultTypes[_consultType];
     final draft = BookingDraft(
       specialistId: s.id,
-      dateLabel: _dayLabel(_selectedDay),
-      time: _selectedTime!,
+      startAt: slotDateTime(_days[_selectedDay], _selectedTime!),
       consultType: type,
       durationMin: consultDuration(type),
       fee: s.fee,
+      reason: _reasonCtrl.text.trim(),
     );
     // Persist the booking (Firestore when signed in) before showing the
     // confirmation — so it appears under My Appointments and survives restart.
@@ -327,11 +327,26 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
                   Divider(color: context.dColors.borderLight, height: 24),
                   Row(
                     children: [
-                      Text('Total', style: AppTypography.labelMedium),
+                      Text('Estimated Fee', style: AppTypography.labelMedium),
                       const Spacer(),
                       Text('\$${s.fee.toStringAsFixed(0)}',
                           style: AppTypography.labelLarge.copyWith(
                               color: AppColors.primary)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          size: 14, color: context.dColors.textTertiary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Estimate only — you won\'t be charged now. Pay at your visit.',
+                          style: AppTypography.caption
+                              .copyWith(color: context.dColors.textTertiary),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -385,7 +400,7 @@ class _ConfirmBar extends StatelessWidget {
                   color: enabled ? Colors.white : context.dColors.textTertiary),
               const SizedBox(width: 8),
               Text(
-                enabled ? 'Confirm Booking · \$${fee.toStringAsFixed(0)}' : 'Select a time slot',
+                enabled ? 'Confirm Booking · \$${fee.toStringAsFixed(0)} est.' : 'Select a time slot',
                 style: AppTypography.button.copyWith(
                     color: enabled ? Colors.white : context.dColors.textTertiary),
               ),

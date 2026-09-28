@@ -1,48 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../routine/data/routine_log.dart';
+import '../../../routine/data/routine_models.dart';
+import '../../../routine/providers/routine_provider.dart';
+import '../../providers/calendar_log_provider.dart';
 
-class DailyRoutineScreen extends StatefulWidget {
+class DailyRoutineScreen extends ConsumerStatefulWidget {
   const DailyRoutineScreen({super.key});
 
   @override
-  State<DailyRoutineScreen> createState() => _DailyRoutineScreenState();
+  ConsumerState<DailyRoutineScreen> createState() => _DailyRoutineScreenState();
 }
 
-class _DailyRoutineScreenState extends State<DailyRoutineScreen> {
-  final Set<String> _completed = {'am0', 'am1', 'am2'};
-  int _checkInScore = 0;
+class _DailyRoutineScreenState extends ConsumerState<DailyRoutineScreen> {
+  void _toggle(bool isAm, String id) {
+    ref.read(routineProvider.notifier).toggleStep(isAm, id);
+  }
 
-  static const _amSteps = [
-    _Step('am0', 'Cleanser', '7:00 AM', Icons.water_drop_rounded, Color(0xFF06B6D4)),
-    _Step('am1', 'Toner', '7:05 AM', Icons.science_rounded, Color(0xFF8B5CF6)),
-    _Step('am2', 'Serum', '7:08 AM', Icons.biotech_rounded, Color(0xFF7C5CFF)),
-    _Step('am3', 'Moisturizer', '7:12 AM', Icons.spa_rounded, Color(0xFF22C55E)),
-    _Step('am4', 'SPF 50+', '7:15 AM', Icons.wb_sunny_rounded, Color(0xFFF59E0B)),
-  ];
-
-  static const _pmSteps = [
-    _Step('pm0', 'Oil Cleanse', '9:30 PM', Icons.cleaning_services_rounded, Color(0xFFEC4899)),
-    _Step('pm1', 'Cleanser', '9:33 PM', Icons.water_drop_rounded, Color(0xFF06B6D4)),
-    _Step('pm2', 'Retinol', '9:36 PM', Icons.auto_awesome_rounded, Color(0xFF8B5CF6)),
-    _Step('pm3', 'Night Cream', '9:40 PM', Icons.spa_rounded, Color(0xFF22C55E)),
-  ];
-
-  int get _total => _amSteps.length + _pmSteps.length;
-  int get _doneCount =>
-      _completed.where((id) => id.startsWith('am') || id.startsWith('pm')).length;
-
-  void _toggle(String id) {
-    setState(() {
-      if (_completed.contains(id)) {
-        _completed.remove(id);
-      } else {
-        _completed.add(id);
-      }
-    });
+  /// Persist the skin check-in (mood 1–5 → score 20–100) to the calendar log.
+  void _rateCheckIn(int mood) {
+    ref.read(calendarLogProvider.notifier).setCheckIn(DateTime.now(), mood * 20);
   }
 
   String _todayLabel() {
@@ -52,9 +34,30 @@ class _DailyRoutineScreenState extends State<DailyRoutineScreen> {
     return '${wd[d.weekday - 1]}, ${mo[d.month - 1]} ${d.day}';
   }
 
+  /// Maps a provider [RoutineStep] to the local display model.
+  _Step _display(RoutineStep s) =>
+      _Step(s.id, s.stepType, s.productName, s.icon, s.color);
+
   @override
   Widget build(BuildContext context) {
-    final pct = _doneCount / _total;
+    final routine = ref.watch(routineProvider);
+    final amSteps = [for (final s in routine.amSteps) _display(s)];
+    final pmSteps = [for (final s in routine.pmSteps) _display(s)];
+    final amDone = routine.amDoneIds;
+    final pmDone = routine.pmDoneIds;
+
+    bool isDone(_Step s, bool isAm) =>
+        (isAm ? amDone : pmDone).contains(s.id);
+
+    final total = amSteps.length + pmSteps.length;
+    final doneCount = amSteps.where((s) => isDone(s, true)).length +
+        pmSteps.where((s) => isDone(s, false)).length;
+    final pct = total == 0 ? 0.0 : doneCount / total;
+
+    // Real check-in score for today (0–100 → mood 1–5), 0 when not rated.
+    final todayKey = routineDayKey(DateTime.now());
+    final savedScore = ref.watch(calendarLogProvider).checkIns[todayKey] ?? 0;
+    final checkInScore = savedScore > 0 ? (savedScore / 20).round().clamp(1, 5) : 0;
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -125,7 +128,7 @@ class _DailyRoutineScreenState extends State<DailyRoutineScreen> {
                       Text("Today's Progress",
                           style: AppTypography.labelLarge.copyWith(color: Colors.white)),
                       const SizedBox(height: 4),
-                      Text('$_doneCount of $_total steps completed',
+                      Text('$doneCount of $total steps completed',
                           style: AppTypography.bodySmall.copyWith(
                               color: Colors.white.withValues(alpha: 0.7))),
                       const SizedBox(height: 4),
@@ -150,17 +153,17 @@ class _DailyRoutineScreenState extends State<DailyRoutineScreen> {
             icon: Icons.wb_sunny_rounded,
             title: 'Morning Routine',
             color: const Color(0xFFF59E0B),
-            done: _amSteps.where((s) => _completed.contains(s.id)).length,
-            total: _amSteps.length,
+            done: amSteps.where((s) => isDone(s, true)).length,
+            total: amSteps.length,
           ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
           const SizedBox(height: 12),
-          ..._amSteps.asMap().entries.map((e) {
+          ...amSteps.asMap().entries.map((e) {
             final s = e.value;
             return _StepTile(
               step: s,
               index: e.key + 1,
-              done: _completed.contains(s.id),
-              onToggle: () => _toggle(s.id),
+              done: isDone(s, true),
+              onToggle: () => _toggle(true, s.id),
             ).animate().fadeIn(delay: (120 + e.key * 60).ms, duration: 300.ms)
                 .slideY(begin: 0.06);
           }),
@@ -172,17 +175,17 @@ class _DailyRoutineScreenState extends State<DailyRoutineScreen> {
             icon: Icons.nightlight_rounded,
             title: 'Evening Routine',
             color: AppColors.primary,
-            done: _pmSteps.where((s) => _completed.contains(s.id)).length,
-            total: _pmSteps.length,
+            done: pmSteps.where((s) => isDone(s, false)).length,
+            total: pmSteps.length,
           ).animate().fadeIn(delay: 200.ms, duration: 300.ms),
           const SizedBox(height: 12),
-          ..._pmSteps.asMap().entries.map((e) {
+          ...pmSteps.asMap().entries.map((e) {
             final s = e.value;
             return _StepTile(
               step: s,
               index: e.key + 1,
-              done: _completed.contains(s.id),
-              onToggle: () => _toggle(s.id),
+              done: isDone(s, false),
+              onToggle: () => _toggle(false, s.id),
             ).animate().fadeIn(delay: (220 + e.key * 60).ms, duration: 300.ms)
                 .slideY(begin: 0.06);
           }),
@@ -191,8 +194,8 @@ class _DailyRoutineScreenState extends State<DailyRoutineScreen> {
 
           // ── Skin check-in ────────────────────────────────────────────────
           _CheckInCard(
-            score: _checkInScore,
-            onRate: (v) => setState(() => _checkInScore = v),
+            score: checkInScore,
+            onRate: _rateCheckIn,
           ).animate().fadeIn(delay: 320.ms, duration: 350.ms).slideY(begin: 0.05),
         ],
       ),

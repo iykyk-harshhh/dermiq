@@ -61,7 +61,7 @@ final profileProvider = Provider<UserProfile>((ref) {
   return UserProfile(
     name: user?.displayName ?? 'Guest',
     email: user?.email ?? '',
-    photoUrl: null,
+    photoUrl: user?.photoUrl,
     skinType: quiz.skinType,
     fitzpatrick: quiz.fitzpatrick,
     skinConcerns: quiz.skinConcerns,

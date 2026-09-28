@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/firebase/analytics_service.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -19,11 +20,16 @@ class OrderNotifier extends Notifier<List<Order>> {
     final uid = ref.watch(authStateProvider)?.id;
     if (uid != null && _repo.isOnline) {
       final sub = _repo.watch(uid).listen(
-          (orders) => state = orders.isNotEmpty ? orders : seedDemoOrders());
+        (orders) => state = orders.isNotEmpty ? orders : seedDemoOrders(),
+        onError: (Object e) => debugPrint('[Orders] watch error: $e'),
+      );
       ref.onDispose(sub.cancel);
     }
     return seedDemoOrders();
   }
+
+  /// Demo/seed orders live only in memory — never persisted to Firestore.
+  bool _isDemo(String orderId) => orderId.startsWith('demo');
 
   /// Places a new order, prepends it to the list, and returns the placed [Order].
   Order placeOrder({
@@ -70,7 +76,9 @@ class OrderNotifier extends Notifier<List<Order>> {
     state[idx].status = OrderStatus.cancelled;
     state = [...state];
     final uid = _uid;
-    if (uid != null) _repo.updateStatus(uid, orderId, OrderStatus.cancelled);
+    if (uid != null && !_isDemo(orderId)) {
+      _repo.updateStatus(uid, orderId, OrderStatus.cancelled);
+    }
   }
 
   /// Marks an order delivered and **auto-adds its products to My Shelf**
@@ -87,7 +95,9 @@ class OrderNotifier extends Notifier<List<Order>> {
     state = [...state]; // new reference so watchers rebuild
 
     final uid = _uid;
-    if (uid != null) _repo.updateStatus(uid, orderId, OrderStatus.delivered);
+    if (uid != null && !_isDemo(orderId)) {
+      _repo.updateStatus(uid, orderId, OrderStatus.delivered);
+    }
 
     final shelf = ref.read(shelfProvider.notifier);
     final now = DateTime.now();

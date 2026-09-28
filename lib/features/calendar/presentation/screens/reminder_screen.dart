@@ -1,9 +1,28 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/preferences_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+
+/// Stable icon catalog so reminder icons can be serialized by key and remain
+/// const (tree-shake friendly). Unknown keys fall back to a generic alarm.
+const Map<String, IconData> _reminderIcons = {
+  'sunny': Icons.wb_sunny_rounded,
+  'night': Icons.nightlight_rounded,
+  'favorite': Icons.favorite_rounded,
+  'inventory': Icons.inventory_2_rounded,
+  'alarm': Icons.alarm_rounded,
+  'water': Icons.water_drop_rounded,
+  'mask': Icons.face_retouching_natural_rounded,
+  'medical': Icons.medical_services_rounded,
+};
+
+IconData _iconFor(String key) => _reminderIcons[key] ?? Icons.alarm_rounded;
 
 class ReminderScreen extends StatefulWidget {
   const ReminderScreen({super.key});
@@ -15,19 +34,97 @@ class ReminderScreen extends StatefulWidget {
 class _ReminderScreenState extends State<ReminderScreen> {
   bool _masterEnabled = true;
 
-  final List<_Reminder> _reminders = [
-    _Reminder('Morning Routine', const TimeOfDay(hour: 7, minute: 0),
-        Icons.wb_sunny_rounded, const Color(0xFFF59E0B), true),
-    _Reminder('Evening Routine', const TimeOfDay(hour: 21, minute: 30),
-        Icons.nightlight_rounded, const Color(0xFF7C5CFF), true),
-    _Reminder('Skin Check-In', const TimeOfDay(hour: 20, minute: 0),
-        Icons.favorite_rounded, const Color(0xFF22C55E), false),
-    _Reminder('Product Refill', const TimeOfDay(hour: 10, minute: 0),
-        Icons.inventory_2_rounded, const Color(0xFFEC4899), false),
+  static const List<_Reminder> _defaultReminders = [
+    _Reminder(1, 'Morning Routine', TimeOfDay(hour: 7, minute: 0), 'sunny',
+        Color(0xFFF59E0B), true),
+    _Reminder(2, 'Evening Routine', TimeOfDay(hour: 21, minute: 30), 'night',
+        Color(0xFF7C5CFF), true),
+    _Reminder(3, 'Skin Check-In', TimeOfDay(hour: 20, minute: 0), 'favorite',
+        Color(0xFF22C55E), false),
+    _Reminder(4, 'Product Refill', TimeOfDay(hour: 10, minute: 0), 'inventory',
+        Color(0xFFEC4899), false),
   ];
+
+  final List<_Reminder> _reminders = [];
+  int _nextId = 100; // ids for user-added reminders
 
   Set<int> _selectedDays = {1, 2, 3, 4, 5, 6, 7}; // every day
   static const _dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAndReschedule();
+  }
+
+  /// Load persisted reminders (or seed defaults) and reschedule every enabled
+  /// reminder so notifications survive app restarts.
+  Future<void> _loadAndReschedule() async {
+    final raw = PreferencesService.remindersJson;
+    if (raw != null) {
+      try {
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        _masterEnabled = map['master'] as bool? ?? true;
+        final days = (map['days'] as List?)?.map((e) => (e as num).toInt());
+        if (days != null) _selectedDays = days.toSet();
+        final list = (map['reminders'] as List?)
+                ?.map((e) => _Reminder.fromJson((e as Map).cast<String, dynamic>()))
+                .toList() ??
+            [];
+        _reminders
+          ..clear()
+          ..addAll(list);
+        final maxId = _reminders.fold<int>(
+            99, (m, r) => r.id > m ? r.id : m);
+        _nextId = maxId + 1;
+      } catch (_) {
+        _reminders
+          ..clear()
+          ..addAll(_defaultReminders);
+      }
+    } else {
+      _reminders
+        ..clear()
+        ..addAll(_defaultReminders);
+    }
+    if (mounted) setState(() {});
+    await _rescheduleAll();
+    // Persist seeded defaults on first open so ids/state are stable.
+    if (raw == null) await _persist();
+  }
+
+  /// Persist the current reminder configuration.
+  Future<void> _persist() async {
+    final payload = jsonEncode({
+      'master': _masterEnabled,
+      'days': _selectedDays.toList(),
+      'reminders': _reminders.map((r) => r.toJson()).toList(),
+    });
+    await PreferencesService.setRemindersJson(payload);
+  }
+
+  /// Cancel all reminder notifications, then reschedule enabled ones (only when
+  /// the master toggle is on).
+  Future<void> _rescheduleAll() async {
+    for (final r in _reminders) {
+      await NotificationService.instance.cancel(r.id);
+    }
+    if (!_masterEnabled) return;
+    for (final r in _reminders) {
+      if (r.enabled) await _schedule(r);
+    }
+  }
+
+  Future<void> _schedule(_Reminder r) async {
+    final now = DateTime.now();
+    await NotificationService.instance.scheduleReminder(
+      id: r.id,
+      title: r.title,
+      body: 'Time for your ${r.title.toLowerCase()} ✨',
+      time: DateTime(now.year, now.month, now.day, r.time.hour, r.time.minute),
+      repeatDays: _selectedDays.toList()..sort(),
+    );
+  }
 
   Future<void> _editTime(int index) async {
     final picked = await showTimePicker(
@@ -42,17 +139,22 @@ class _ReminderScreenState extends State<ReminderScreen> {
     );
     if (picked == null) return;
     if (!mounted) return;
-    setState(() {
-      final r = _reminders[index];
-      _reminders[index] = r.copyWith(time: picked);
-    });
+    final r = _reminders[index].copyWith(time: picked);
+    setState(() => _reminders[index] = r);
+    await NotificationService.instance.cancel(r.id);
+    if (_masterEnabled && r.enabled) await _schedule(r);
+    await _persist();
   }
 
-  void _toggle(int index) {
-    setState(() {
-      final r = _reminders[index];
-      _reminders[index] = r.copyWith(enabled: !r.enabled);
-    });
+  Future<void> _toggle(int index) async {
+    final r = _reminders[index].copyWith(enabled: !_reminders[index].enabled);
+    setState(() => _reminders[index] = r);
+    if (r.enabled && _masterEnabled) {
+      await _schedule(r);
+    } else {
+      await NotificationService.instance.cancel(r.id);
+    }
+    await _persist();
   }
 
   void _addReminder() {
@@ -61,11 +163,25 @@ class _ReminderScreenState extends State<ReminderScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _AddReminderSheet(
-        onAdd: (name, time, icon, color) {
-          setState(() => _reminders.add(_Reminder(name, time, icon, color, true)));
+        onAdd: (name, time, iconKey, color) async {
+          final r = _Reminder(_nextId++, name, time, iconKey, color, true);
+          setState(() => _reminders.add(r));
+          if (_masterEnabled) await _schedule(r);
+          await _persist();
         },
       ),
     );
+  }
+
+  Future<void> _onMasterChanged(bool v) async {
+    setState(() => _masterEnabled = v);
+    await _rescheduleAll(); // cancels all; reschedules enabled when on
+    await _persist();
+  }
+
+  Future<void> _onDaysChanged() async {
+    await _rescheduleAll();
+    await _persist();
   }
 
   @override
@@ -148,7 +264,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
                 ),
                 Switch.adaptive(
                   value: _masterEnabled,
-                  onChanged: (v) => setState(() => _masterEnabled = v),
+                  onChanged: _onMasterChanged,
                   activeThumbColor: Colors.white,
                   activeTrackColor: Colors.white.withValues(alpha: 0.35),
                 ),
@@ -183,6 +299,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
                         _selectedDays = {..._selectedDays}..add(dayNum);
                       }
                     });
+                    _onDaysChanged();
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
@@ -264,18 +381,49 @@ class _ReminderScreenState extends State<ReminderScreen> {
 // ── _Reminder model ───────────────────────────────────────────────────────────
 
 class _Reminder {
+  final int id;
   final String title;
   final TimeOfDay time;
-  final IconData icon;
+  final String iconKey;
   final Color color;
   final bool enabled;
-  const _Reminder(this.title, this.time, this.icon, this.color, this.enabled);
+  const _Reminder(
+      this.id, this.title, this.time, this.iconKey, this.color, this.enabled);
+
+  IconData get icon => _iconFor(iconKey);
 
   _Reminder copyWith({TimeOfDay? time, bool? enabled}) => _Reminder(
-        title, time ?? this.time, icon, color, enabled ?? this.enabled,
+        id,
+        title,
+        time ?? this.time,
+        iconKey,
+        color,
+        enabled ?? this.enabled,
       );
 
   String format(BuildContext context) => time.format(context);
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'hour': time.hour,
+        'minute': time.minute,
+        'iconKey': iconKey,
+        'color': color.toARGB32(),
+        'enabled': enabled,
+      };
+
+  factory _Reminder.fromJson(Map<String, dynamic> j) => _Reminder(
+        (j['id'] as num).toInt(),
+        j['title'] as String? ?? 'Reminder',
+        TimeOfDay(
+          hour: (j['hour'] as num?)?.toInt() ?? 8,
+          minute: (j['minute'] as num?)?.toInt() ?? 0,
+        ),
+        j['iconKey'] as String? ?? 'alarm',
+        Color((j['color'] as num?)?.toInt() ?? 0xFF7C5CFF),
+        j['enabled'] as bool? ?? true,
+      );
 }
 
 // ── _ReminderCard ─────────────────────────────────────────────────────────────
@@ -351,7 +499,8 @@ class _ReminderCard extends StatelessWidget {
 // ── _AddReminderSheet ─────────────────────────────────────────────────────────
 
 class _AddReminderSheet extends StatefulWidget {
-  final void Function(String name, TimeOfDay time, IconData icon, Color color) onAdd;
+  final void Function(String name, TimeOfDay time, String iconKey, Color color)
+      onAdd;
   const _AddReminderSheet({required this.onAdd});
 
   @override
@@ -359,12 +508,13 @@ class _AddReminderSheet extends StatefulWidget {
 }
 
 class _AddReminderSheetState extends State<_AddReminderSheet> {
+  // (name, iconKey, color)
   static const _presets = [
-    ('Custom Reminder', Icons.alarm_rounded, Color(0xFF7C5CFF)),
-    ('Hydration', Icons.water_drop_rounded, Color(0xFF06B6D4)),
-    ('Mask Day', Icons.face_retouching_natural_rounded, Color(0xFF8B5CF6)),
-    ('SPF Reapply', Icons.wb_sunny_rounded, Color(0xFFF59E0B)),
-    ('Dermatologist', Icons.medical_services_rounded, Color(0xFF22C55E)),
+    ('Custom Reminder', 'alarm', Color(0xFF7C5CFF)),
+    ('Hydration', 'water', Color(0xFF06B6D4)),
+    ('Mask Day', 'mask', Color(0xFF8B5CF6)),
+    ('SPF Reapply', 'sunny', Color(0xFFF59E0B)),
+    ('Dermatologist', 'medical', Color(0xFF22C55E)),
   ];
 
   int _selected = 0;
@@ -395,7 +545,8 @@ class _AddReminderSheetState extends State<_AddReminderSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final (presetName, icon, color) = _presets[_selected];
+    final (presetName, iconKey, color) = _presets[_selected];
+    final icon = _iconFor(iconKey);
     return Container(
       padding: EdgeInsets.fromLTRB(
           20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
@@ -429,7 +580,8 @@ class _AddReminderSheetState extends State<_AddReminderSheet> {
               itemCount: _presets.length,
               separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
-                final (name, ic, c) = _presets[i];
+                final (name, icKey, c) = _presets[i];
+                final ic = _iconFor(icKey);
                 final sel = i == _selected;
                 return GestureDetector(
                   onTap: () => setState(() => _selected = i),
@@ -519,7 +671,7 @@ class _AddReminderSheetState extends State<_AddReminderSheet> {
               final name = _controller.text.trim().isEmpty
                   ? presetName
                   : _controller.text.trim();
-              widget.onAdd(name, _time, icon, color);
+              widget.onAdd(name, _time, iconKey, color);
               Navigator.pop(context);
             },
             child: Container(

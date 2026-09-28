@@ -40,6 +40,7 @@ import '../../features/home/presentation/screens/notifications_screen.dart';
 // Scan
 import '../../features/scan/presentation/screens/scan_screen.dart';
 import '../../features/scanner/presentation/screens/smart_scanner_screen.dart';
+import '../../features/scanner/domain/entities/scanned_product.dart';
 import '../../features/scan/presentation/screens/manual_search_screen.dart';
 import '../../features/scan/presentation/screens/search_results_screen.dart';
 import '../../features/scan/presentation/screens/product_analysis_screen.dart';
@@ -61,6 +62,7 @@ import '../../features/shop/presentation/screens/checkout_screen.dart';
 import '../../features/shop/presentation/screens/order_success_screen.dart';
 import '../../features/shop/presentation/screens/order_tracking_screen.dart';
 import '../../features/shop/presentation/screens/my_orders_screen.dart';
+import '../../features/shop/presentation/screens/wishlist_screen.dart';
 
 // Routine
 import '../../features/routine/presentation/screens/routine_screen.dart';
@@ -315,8 +317,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.scanAnalysisPattern, name: RouteNames.scanAnalysis,
-        builder: (_, state) =>
-            ProductAnalysisScreen(productId: state.pathParameters['id']!),
+        builder: (_, state) => ProductAnalysisScreen(
+          productId: state.pathParameters['id']!,
+          scanned: state.extra as ScannedProduct?,
+        ),
       ),
 
       // ── Analysis ────────────────────────────────────────────────────────────
@@ -451,21 +455,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.orderSuccess, name: RouteNames.orderSuccess,
-        builder: (_, state) {
-          final order = state.extra as Order;
-          return OrderSuccessScreen(order: order);
-        },
+        builder: (_, state) =>
+            OrderSuccessScreen(fallback: state.extra as Order?),
       ),
       GoRoute(
         path: AppRoutes.orderTrackingPattern, name: RouteNames.orderTracking,
-        builder: (_, state) {
-          final order = state.extra as Order;
-          return OrderTrackingScreen(order: order);
-        },
+        builder: (_, state) => OrderTrackingScreen(
+          orderId: state.pathParameters['id'] ?? '',
+          fallback: state.extra as Order?,
+        ),
       ),
       GoRoute(
         path: AppRoutes.orders, name: RouteNames.orders,
         builder: (_, _) => const MyOrdersScreen(),
+      ),
+      // Wishlist (saved shop products). Reached from the heart in the Shop
+      // app bar and from the product detail's wishlist toggle.
+      GoRoute(
+        path: '/wishlist', name: 'wishlist',
+        builder: (_, _) => const WishlistScreen(),
       ),
 
       // ── Profile sub-screens ─────────────────────────────────────────────────

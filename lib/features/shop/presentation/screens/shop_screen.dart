@@ -14,6 +14,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../data/shop_models.dart';
 import '../../data/shop_seed.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/wishlist_provider.dart';
 import '../widgets/product_image.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,15 +127,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
     }
     return list;
   }
-
-  /// True when the user is actively searching or filtering — switches the
-  /// results from the browsing grid to the infinite card slider.
-  bool get _isFiltering =>
-      _query.trim().isNotEmpty ||
-      _selectedBrands.isNotEmpty ||
-      _minPrice > 0 ||
-      _maxPrice < 5000 ||
-      _minRating > 0;
 
   void _addToCart(ShopProduct product, Rect from) {
     HapticFeedback.mediumImpact();
@@ -280,6 +272,50 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
           style: AppTypography.h3.copyWith(color: context.dColors.textPrimary),
         ),
         actions: [
+          // Wishlist — heart with a live saved-count badge.
+          GestureDetector(
+            onTap: () => context.push('/wishlist'),
+            child: Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(Icons.favorite_border_rounded,
+                      color: context.dColors.textPrimary, size: 24),
+                  Positioned(
+                    top: -3,
+                    right: -4,
+                    child: Consumer(
+                      builder: (_, ref, _) {
+                        final count = ref.watch(wishlistProvider).length;
+                        if (count == 0) return const SizedBox.shrink();
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          constraints: const BoxConstraints(minWidth: 16),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            count > 9 ? '9+' : '$count',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           // Cart — fly-to-cart target; badge shows the live item count. The
           // bounce uses a ValueNotifier and the badge a scoped Consumer, so
           // neither rebuilds the product grid (no entrance-animation flicker).
@@ -374,33 +410,14 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
             ),
           ),
 
-          // ── Results: infinite card slider when searching/filtering,
-          //    otherwise the normal browsing grid. ─────────────────────────────
+          // ── Products: cover-flow carousel with a colour-morphing backdrop
+          //    (watch-shop style). Used for both browsing and search results.
           Expanded(
-            child: _isFiltering
-                ? _SearchResultsSlider(
-                    products: _activeTab == 0 ? skincareList : haircareList,
-                    onTap: (p) =>
-                        context.push('/shop/product/${p.id}', extra: p),
-                    onAddToCart: _addToCart,
-                  )
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _ProductGrid(
-                        products: skincareList,
-                        onTap: (p) =>
-                            context.push('/shop/product/${p.id}', extra: p),
-                        onAddToCart: _addToCart,
-                      ),
-                      _ProductGrid(
-                        products: haircareList,
-                        onTap: (p) =>
-                            context.push('/shop/product/${p.id}', extra: p),
-                        onAddToCart: _addToCart,
-                      ),
-                    ],
-                  ),
+            child: _SearchResultsSlider(
+              products: _activeTab == 0 ? skincareList : haircareList,
+              onTap: (p) => context.push('/shop/product/${p.id}', extra: p),
+              onAddToCart: _addToCart,
+            ),
           ),
         ],
       ),
@@ -469,100 +486,6 @@ class _SearchBar extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _ProductGrid
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ProductGrid extends StatelessWidget {
-  const _ProductGrid({
-    required this.products,
-    required this.onTap,
-    required this.onAddToCart,
-  });
-
-  final List<ShopProduct> products;
-  final ValueChanged<ShopProduct> onTap;
-  final void Function(ShopProduct product, Rect source) onAddToCart;
-
-  @override
-  Widget build(BuildContext context) {
-    if (products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded,
-                size: 48, color: context.dColors.textTertiary),
-            const SizedBox(height: AppConstants.sp12),
-            Text(
-              'No products found',
-              style: AppTypography.labelMedium
-                  .copyWith(color: context.dColors.textSecondary),
-            ),
-            const SizedBox(height: AppConstants.sp4),
-            Text(
-              'Try adjusting your filters',
-              style: AppTypography.caption,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const padding = AppConstants.screenPaddingH;
-        const spacing = AppConstants.sp16;
-        final availableWidth = constraints.maxWidth - padding * 2;
-
-        // Responsive column count: 3 on tablets/large widths, else 2.
-        final crossAxisCount = availableWidth >= 640 ? 3 : 2;
-
-        // Width of a single card given the chosen column count.
-        final cardWidth =
-            (availableWidth - spacing * (crossAxisCount - 1)) / crossAxisCount;
-
-        // The card is a Column split by flex 11 (image) / 10 (info). The info
-        // area packs brand + 2-line name + match + price + rating + a 36px
-        // button with gaps, needing a roughly fixed vertical budget regardless
-        // of card width. Size the card so the info flex-slice (10/21 of the
-        // card height) always clears that budget, then derive an aspect ratio.
-        const infoBudget = 200.0; // min px the info area must receive
-        const infoFlexFraction = 10 / 21;
-        final imageHeight = cardWidth; // square-ish image area
-        // Card height must satisfy both: image slice >= imageHeight AND
-        // info slice (10/21) >= infoBudget. Take the larger requirement.
-        final cardHeight =
-            (imageHeight / (11 / 21)) > (infoBudget / infoFlexFraction)
-                ? imageHeight / (11 / 21)
-                : infoBudget / infoFlexFraction;
-        final childAspectRatio = cardWidth / cardHeight;
-
-        return GridView.builder(
-          padding: const EdgeInsets.all(padding),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            mainAxisSpacing: spacing,
-            crossAxisSpacing: spacing,
-            childAspectRatio: childAspectRatio,
-          ),
-          itemCount: products.length,
-          itemBuilder: (context, i) {
-            return _ShopProductCard(
-              product: products[i],
-              onTap: () => onTap(products[i]),
-              onAddToCart: (rect) => onAddToCart(products[i], rect),
-            )
-                .animate(delay: Duration(milliseconds: 60 * i))
-                .fadeIn(duration: 350.ms)
-                .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic);
-          },
-        );
-      },
     );
   }
 }
@@ -1320,11 +1243,41 @@ class _SearchResultsSliderState extends State<_SearchResultsSlider> {
     final products = widget.products;
     if (products.isEmpty || _controller == null) return const _EmptyResults();
 
-    return Column(
+    // Colour-morphing backdrop: blend the centred product's accent into the
+    // next one's by the fractional scroll position, so the halo behind the
+    // carousel smoothly shifts colour as you swipe (watch-shop signature).
+    final n = products.length;
+    final base = _page.floor();
+    final frac = _page - base;
+    final curColor = products[((base % n) + n) % n].accentColor;
+    final nextColor = products[(((base + 1) % n) + n) % n].accentColor;
+    final morph = Color.lerp(curColor, nextColor, frac) ?? curColor;
+
+    return Stack(
+      children: [
+        // ── Colour-morph halo ────────────────────────────────────────────────
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.15),
+                radius: 0.95,
+                colors: [
+                  morph.withValues(alpha: 0.30),
+                  morph.withValues(alpha: 0.10),
+                  morph.withValues(alpha: 0.0),
+                ],
+                stops: const [0.0, 0.55, 1.0],
+              ),
+            ),
+          ),
+        ),
+
+        Column(
       children: [
         const SizedBox(height: AppConstants.sp12),
         Text(
-          '${products.length} result${products.length == 1 ? '' : 's'}'
+          '${products.length} product${products.length == 1 ? '' : 's'}'
           '  ·  swipe to explore',
           style: AppTypography.caption
               .copyWith(color: context.dColors.textSecondary),
@@ -1369,6 +1322,8 @@ class _SearchResultsSliderState extends State<_SearchResultsSlider> {
           ),
         ),
         const SizedBox(height: AppConstants.sp24),
+      ],
+        ),
       ],
     );
   }

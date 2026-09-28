@@ -1,4 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum PaymentOutcome { success, failed, cancelled }
@@ -12,22 +11,12 @@ class PaymentResult {
   bool get isSuccess => outcome == PaymentOutcome.success;
 }
 
-/// Online payments (Razorpay) are a **post-investment** feature. The secure
-/// server side already exists (`functions/index.js`: `createRazorpayOrder` +
-/// `verifyRazorpayPayment`); only the native `razorpay_flutter` checkout sheet
-/// is decoupled from the pitch build (AGP-8 namespace conflict + needs a
-/// merchant account). Until it's re-added, `payForOrder` reports "unavailable"
-/// so checkout falls back to Cash on Delivery.
-///
-/// To re-enable after funding:
-///   1. Uncomment `razorpay_flutter` in pubspec.yaml + resolve the AGP namespace
-///      conflict, `flutter pub get`.
-///   2. Restore the Razorpay checkout flow here (create order → open sheet →
-///      verify signature via the existing Cloud Functions). See git history.
+/// Checkout runs in **demo mode**: online payments are simulated (no real
+/// charge, no backend). This is a portfolio build kept on Firebase's free tier
+/// — real Razorpay checkout would need a paid Blaze plan (Cloud Functions) plus
+/// a merchant account, so it is intentionally left out.
 class PaymentService {
-  PaymentService(this._functions);
-  // ignore: unused_field — kept for the post-investment Razorpay flow.
-  final FirebaseFunctions _functions;
+  const PaymentService();
 
   Future<PaymentResult> payForOrder({
     required int amountPaise,
@@ -37,10 +26,7 @@ class PaymentService {
     required String phone,
     String description = 'DermIQ order',
   }) async {
-    // DEMO MODE: online payments are simulated (no real charge) until the
-    // Razorpay backend is funded + deployed. The secure server flow
-    // (createRazorpayOrder + verifyRazorpayPayment) already exists in
-    // functions/index.js and the native checkout is re-added at that point.
+    // Simulate a payment round-trip, then report success.
     await Future.delayed(const Duration(milliseconds: 1400));
     return PaymentResult(
       PaymentOutcome.success,
@@ -49,10 +35,5 @@ class PaymentService {
   }
 }
 
-final firebaseFunctionsProvider = Provider<FirebaseFunctions>((ref) {
-  return FirebaseFunctions.instanceFor(region: 'us-central1');
-});
-
-final paymentServiceProvider = Provider<PaymentService>((ref) {
-  return PaymentService(ref.watch(firebaseFunctionsProvider));
-});
+final paymentServiceProvider =
+    Provider<PaymentService>((ref) => const PaymentService());

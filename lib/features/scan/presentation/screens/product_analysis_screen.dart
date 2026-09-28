@@ -5,11 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../shelf/data/shelf_models.dart';
 import '../../../shelf/providers/shelf_provider.dart';
+import '../../../scanner/domain/entities/scanned_ingredient.dart';
+import '../../../scanner/domain/entities/scanned_product.dart';
 
-// The analyzed product (currently the mock OCR result the screen displays).
+// Fallback mock (used only when no real scanned product is supplied).
 const _kName = 'CeraVe Foaming Facial Cleanser';
 const _kBrand = 'CeraVe';
 const _kCategory = 'Cleanser';
@@ -17,11 +20,26 @@ const _kSafetyScore = 92;
 const _kSkinMatch = 88;
 const _kHairMatch = 75;
 
+// Safe defaults for the not-computable-on-free-tier compatibility figures.
+const _kDefaultSkinMatch = 80;
+const _kDefaultHairMatch = 70;
+const _kDefaultAllergy = 90;
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 class ProductAnalysisScreen extends ConsumerStatefulWidget {
   final String productId;
-  const ProductAnalysisScreen({super.key, required this.productId});
+
+  /// The real scanned product, when navigation supplied one via `extra`.
+  /// Null for the ingredients-only path or legacy links → screen falls back
+  /// to the CeraVe mock so nothing else breaks.
+  final ScannedProduct? scanned;
+
+  const ProductAnalysisScreen({
+    super.key,
+    required this.productId,
+    this.scanned,
+  });
 
   @override
   ConsumerState<ProductAnalysisScreen> createState() => _ProductAnalysisScreenState();
@@ -50,25 +68,34 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
     super.dispose();
   }
 
+  // Real fields when a scanned product is present, else the CeraVe mock.
+  ScannedProduct? get _scanned => widget.scanned;
+  String get _name => _scanned?.name ?? _kName;
+  String get _brand => _scanned?.brand ?? _kBrand;
+  String get _category => _scanned?.category ?? _kCategory;
+  int get _safetyScore => _scanned?.safetyScore ?? _kSafetyScore;
+  int get _skinMatch => _scanned != null ? _kDefaultSkinMatch : _kSkinMatch;
+  int get _hairMatch => _scanned != null ? _kDefaultHairMatch : _kHairMatch;
+
   /// Save Product → Add To Shelf (Scanner is a shelf source, per spec).
   void _addToShelf() {
     final now = DateTime.now();
     ref.read(shelfProvider.notifier).addProduct(ShelfProduct(
           id: 'scan_${widget.productId}_${now.millisecondsSinceEpoch}',
-          name: _kName,
-          brand: _kBrand,
-          category: _kCategory,
-          score: _kSafetyScore,
+          name: _name,
+          brand: _brand,
+          category: _category,
+          score: _safetyScore,
           color: AppColors.primary,
           purchaseDate: now,
           expiryDate: now.add(const Duration(days: 365)),
           notes: 'Added from scan analysis',
-          skinMatch: _kSkinMatch,
-          hairMatch: _kHairMatch,
+          skinMatch: _skinMatch,
+          hairMatch: _hairMatch,
         ));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$_kName added to My Shelf',
+        content: Text('$_name added to My Shelf',
             style: AppTypography.bodySmall.copyWith(color: Colors.white)),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
@@ -115,7 +142,12 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
             centerTitle: true,
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
-              background:   _HeroBackground(),
+              background: _HeroBackground(
+                name: _name,
+                brand: _brand,
+                category: _category,
+                safetyScore: _safetyScore,
+              ),
             ),
           ),
 
@@ -131,6 +163,9 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
                   animation: _enterAnim,
                   builder: (_, _) => _SafetyOverviewCard(
                     progress: _enterAnim.value,
+                    safetyScore: _safetyScore,
+                    skinMatch: _skinMatch,
+                    hairMatch: _hairMatch,
                   ),
                 ).animate()
                     .fadeIn(duration: 380.ms)
@@ -139,7 +174,10 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
                 const SizedBox(height: 14),
 
                 // 2 · AI Verdict
-                const _AiVerdictBanner()
+                _AiVerdictBanner(
+                  productName: _name,
+                  isScanned: _scanned != null,
+                )
                     .animate()
                     .fadeIn(duration: 360.ms, delay: 60.ms)
                     .slideY(begin: 0.06, curve: Curves.easeOutCubic),
@@ -149,8 +187,11 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
                 // 3 · Compatibility
                 AnimatedBuilder(
                   animation: _enterAnim,
-                  builder: (_, _) =>
-                      _CompatibilityCard(progress: _enterAnim.value),
+                  builder: (_, _) => _CompatibilityCard(
+                    progress: _enterAnim.value,
+                    skinMatch: _skinMatch,
+                    hairMatch: _hairMatch,
+                  ),
                 )
                     .animate()
                     .fadeIn(duration: 360.ms, delay: 100.ms)
@@ -159,7 +200,7 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
                 const SizedBox(height: 14),
 
                 // 4 · Ingredient Breakdown
-                const _IngredientBreakdownCard()
+                _IngredientBreakdownCard(scanned: _scanned)
                     .animate()
                     .fadeIn(duration: 360.ms, delay: 140.ms)
                     .slideY(begin: 0.06, curve: Curves.easeOutCubic),
@@ -167,7 +208,7 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
                 const SizedBox(height: 14),
 
                 // 5 · Key Ingredients
-                const _KeyIngredientsSection()
+                _KeyIngredientsSection(scanned: _scanned)
                     .animate()
                     .fadeIn(duration: 360.ms, delay: 180.ms)
                     .slideY(begin: 0.06, curve: Curves.easeOutCubic),
@@ -175,7 +216,7 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
                 const SizedBox(height: 14),
 
                 // 6 · Flagged Ingredients
-                const _FlaggedCard()
+                _FlaggedCard(scanned: _scanned)
                     .animate()
                     .fadeIn(duration: 360.ms, delay: 220.ms)
                     .slideY(begin: 0.06, curve: Curves.easeOutCubic),
@@ -183,7 +224,10 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
                 const SizedBox(height: 14),
 
                 // 7 · Product Details
-                const _ProductDetailsCard()
+                _ProductDetailsCard(
+                  scanned: _scanned,
+                  barcode: widget.productId,
+                )
                     .animate()
                     .fadeIn(duration: 360.ms, delay: 260.ms)
                     .slideY(begin: 0.06, curve: Curves.easeOutCubic),
@@ -219,8 +263,22 @@ class _ProductAnalysisScreenState extends ConsumerState<ProductAnalysisScreen>
 // ─── Hero background ──────────────────────────────────────────────────────────
 
 class _HeroBackground extends StatelessWidget {
+  final String name;
+  final String brand;
+  final String category;
+  final int safetyScore;
+  const _HeroBackground({
+    required this.name,
+    required this.brand,
+    required this.category,
+    required this.safetyScore,
+  });
+
   @override
   Widget build(BuildContext context) {
+    final safe = safetyScore >= 70;
+    final chipColor =
+        safe ? const Color(0xFF22C55E) : AppColors.error;
     return Stack(
       children: [
         // Gradient fill
@@ -287,19 +345,23 @@ class _HeroBackground extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'CeraVe Foaming Facial Cleanser',
+                    name,
                     style: AppTypography.h4.copyWith(
                       color:     Colors.white,
                       fontSize:  17,
                     ),
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'CeraVe  ·  Cleanser  ·  355 ml',
+                    '$brand  ·  $category',
                     style: AppTypography.caption.copyWith(
                       color: Colors.white.withValues(alpha: 0.65),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 12),
                   // Safety score hero chip
@@ -307,23 +369,21 @@ class _HeroBackground extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color:        const Color(0xFF22C55E)
-                          .withValues(alpha: 0.18),
+                      color: chipColor.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(20),
-                      border:       Border.all(
-                          color: const Color(0xFF22C55E)
-                              .withValues(alpha: 0.35)),
+                      border: Border.all(
+                          color: chipColor.withValues(alpha: 0.35)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.shield_rounded,
-                            size: 14, color: Color(0xFF22C55E)),
+                        Icon(Icons.shield_rounded,
+                            size: 14, color: chipColor),
                         const SizedBox(width: 7),
                         Text(
-                          '92 Safety Score  ·  Safe for You',
+                          '$safetyScore Safety Score  ·  ${safe ? 'Safe for You' : 'Review Flags'}',
                           style: AppTypography.caption.copyWith(
-                            color:      const Color(0xFF22C55E),
+                            color:      chipColor,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -344,10 +404,21 @@ class _HeroBackground extends StatelessWidget {
 
 class _SafetyOverviewCard extends StatelessWidget {
   final double progress;
-  const _SafetyOverviewCard({required this.progress});
+  final int safetyScore;
+  final int skinMatch;
+  final int hairMatch;
+  const _SafetyOverviewCard({
+    required this.progress,
+    required this.safetyScore,
+    required this.skinMatch,
+    required this.hairMatch,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final safe = safetyScore >= 70;
+    final verdictColor =
+        safe ? const Color(0xFF22C55E) : AppColors.error;
     return _Card(
       child: Column(
         children: [
@@ -376,19 +447,19 @@ class _SafetyOverviewCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _ScoreRing(
-                score:    92,
+                score:    safetyScore,
                 label:    'Safety\nScore',
-                color:    const Color(0xFF22C55E),
+                color:    verdictColor,
                 progress: progress,
               ),
               _ScoreRing(
-                score:    88,
+                score:    skinMatch,
                 label:    'Skin\nMatch',
                 color:    AppColors.primary,
                 progress: progress,
               ),
               _ScoreRing(
-                score:    75,
+                score:    hairMatch,
                 label:    'Hair\nMatch',
                 color:    const Color(0xFFF59E0B),
                 progress: progress,
@@ -402,21 +473,23 @@ class _SafetyOverviewCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color:        const Color(0xFF22C55E).withValues(alpha: 0.08),
+              color:        verdictColor.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
               border:       Border.all(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.20)),
+                  color: verdictColor.withValues(alpha: 0.20)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.check_circle_rounded,
-                    size: 16, color: Color(0xFF22C55E)),
+                Icon(safe ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+                    size: 16, color: verdictColor),
                 const SizedBox(width: 8),
                 Text(
-                  'Safe for your skin and hair profile',
+                  safe
+                      ? 'Safe for your skin and hair profile'
+                      : 'Review the flagged ingredients below',
                   style: AppTypography.labelSmall.copyWith(
-                    color:      const Color(0xFF22C55E),
+                    color:      verdictColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -424,7 +497,7 @@ class _SafetyOverviewCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const _RecommendationChip(score: _kSafetyScore),
+          _RecommendationChip(score: safetyScore),
         ],
       ),
     );
@@ -478,10 +551,22 @@ class _RecommendationChip extends StatelessWidget {
 // ─── 2 · AI Verdict banner ────────────────────────────────────────────────────
 
 class _AiVerdictBanner extends StatelessWidget {
-  const _AiVerdictBanner();
+  final String productName;
+  final bool isScanned;
+  const _AiVerdictBanner({
+    required this.productName,
+    required this.isScanned,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final text = isScanned
+        ? '$productName was matched from its barcode and its ingredient list '
+            'analysed for safety. Review the ingredient breakdown and any '
+            'flagged items below before adding it to your routine.'
+        : 'CeraVe Foaming Cleanser is a strong match for your combination skin profile. '
+            'Ceramides and hyaluronic acid address your hydration goals, while niacinamide '
+            'targets pore appearance. One caution ingredient detected — see below.';
     return Container(
       padding:    const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -524,9 +609,7 @@ class _AiVerdictBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'CeraVe Foaming Cleanser is a strong match for your combination skin profile. '
-                  'Ceramides and hyaluronic acid address your hydration goals, while niacinamide '
-                  'targets pore appearance. One caution ingredient detected — see below.',
+                  text,
                   style: AppTypography.caption.copyWith(
                     color:  context.dColors.textPrimary,
                     height: 1.55,
@@ -545,7 +628,13 @@ class _AiVerdictBanner extends StatelessWidget {
 
 class _CompatibilityCard extends StatelessWidget {
   final double progress;
-  const _CompatibilityCard({required this.progress});
+  final int skinMatch;
+  final int hairMatch;
+  const _CompatibilityCard({
+    required this.progress,
+    required this.skinMatch,
+    required this.hairMatch,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -570,27 +659,28 @@ class _CompatibilityCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text('Your Compatibility', style: AppTypography.labelLarge),
               const Spacer(),
-              const _CompatVerdictChip(scores: [_kSkinMatch, _kHairMatch, 96]),
+              _CompatVerdictChip(
+                  scores: [skinMatch, hairMatch, _kDefaultAllergy]),
             ],
           ),
           const SizedBox(height: 18),
           _CompatBar(
             label:    'Skin Match',
-            score:    88,
+            score:    skinMatch,
             color:    AppColors.primary,
             progress: progress,
           ),
           const SizedBox(height: 13),
           _CompatBar(
             label:    'Hair Match',
-            score:    75,
+            score:    hairMatch,
             color:    const Color(0xFFF59E0B),
             progress: progress,
           ),
           const SizedBox(height: 13),
           _CompatBar(
             label:    'Allergy Check',
-            score:    96,
+            score:    _kDefaultAllergy,
             color:    const Color(0xFF22C55E),
             progress: progress,
           ),
@@ -661,10 +751,36 @@ class _CompatVerdictChip extends StatelessWidget {
 // ─── 4 · Ingredient breakdown ─────────────────────────────────────────────────
 
 class _IngredientBreakdownCard extends StatelessWidget {
-  const _IngredientBreakdownCard();
+  final ScannedProduct? scanned;
+  const _IngredientBreakdownCard({required this.scanned});
+
+  List<String> _names(IngredientSafety s) => scanned!.ingredients
+      .where((i) => i.safety == s)
+      .map((i) => i.name)
+      .toList();
 
   @override
   Widget build(BuildContext context) {
+    final s = scanned;
+    final int total;
+    final List<String> safe;
+    final List<String> caution;
+    final List<String> avoid;
+    if (s != null) {
+      total = s.ingredients.length;
+      safe = _names(IngredientSafety.safe);
+      caution = _names(IngredientSafety.caution);
+      avoid = _names(IngredientSafety.avoid);
+    } else {
+      total = 24;
+      safe = const [
+        'Niacinamide', 'Ceramide NP', 'Hyaluronic Acid',
+        'Glycerin', 'Panthenol', 'Ceramide AP', 'Cholesterol',
+      ];
+      caution = const ['Fragrance', 'Phenoxyethanol'];
+      avoid = const [];
+    }
+
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -688,7 +804,7 @@ class _IngredientBreakdownCard extends StatelessWidget {
                   style: AppTypography.labelLarge),
               const Spacer(),
               Text(
-                '24 total',
+                '$total total',
                 style: AppTypography.caption
                     .copyWith(color: context.dColors.textTertiary),
               ),
@@ -698,26 +814,25 @@ class _IngredientBreakdownCard extends StatelessWidget {
 
           _IngSection(
             label: 'Safe',
-            count: 21,
+            count: safe.length,
             color: const Color(0xFF22C55E),
-            items: const [
-              'Niacinamide', 'Ceramide NP', 'Hyaluronic Acid',
-              'Glycerin', 'Panthenol', 'Ceramide AP', 'Cholesterol',
-            ],
+            items: safe,
+            emptyLabel: 'None detected',
           ),
           const SizedBox(height: 14),
           _IngSection(
             label: 'Caution',
-            count: 2,
+            count: caution.length,
             color: const Color(0xFFF59E0B),
-            items: const ['Fragrance', 'Phenoxyethanol'],
+            items: caution,
+            emptyLabel: 'None detected',
           ),
           const SizedBox(height: 14),
           _IngSection(
             label: 'Avoid',
-            count: 1,
+            count: avoid.length,
             color: const Color(0xFFEF4444),
-            items: const [],
+            items: avoid,
             emptyLabel: 'None detected',
           ),
         ],
@@ -729,10 +844,71 @@ class _IngredientBreakdownCard extends StatelessWidget {
 // ─── 5 · Key ingredients ──────────────────────────────────────────────────────
 
 class _KeyIngredientsSection extends StatelessWidget {
-  const _KeyIngredientsSection();
+  final ScannedProduct? scanned;
+  const _KeyIngredientsSection({required this.scanned});
+
+  static const _palette = [
+    Color(0xFF0EA5E9), Color(0xFF22C55E), Color(0xFF8B5CF6),
+    Color(0xFFF59E0B), Color(0xFF14B8A6),
+  ];
+
+  static const _mockCards = [
+    _KeyIngCard(
+      name:    'Ceramide NP',
+      fn:      'Barrier Repair',
+      benefit: 'Restores and maintains the skin\'s protective lipid barrier after cleansing.',
+      color:   Color(0xFF0EA5E9),
+      icon:    Icons.shield_rounded,
+    ),
+    SizedBox(width: 10),
+    _KeyIngCard(
+      name:    'Hyaluronic Acid',
+      fn:      'Deep Hydration',
+      benefit: 'Draws moisture into the skin for visibly plump and hydrated skin all day.',
+      color:   Color(0xFF22C55E),
+      icon:    Icons.water_drop_rounded,
+    ),
+    SizedBox(width: 10),
+    _KeyIngCard(
+      name:    'Niacinamide',
+      fn:      'Brightening & Pores',
+      benefit: 'Minimises the appearance of pores and visibly evens out skin tone over time.',
+      color:   Color(0xFF8B5CF6),
+      icon:    Icons.brightness_5_rounded,
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final s = scanned;
+
+    // Real scanned product with no readable ingredients → hide the section.
+    if (s != null && s.ingredients.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final List<Widget> cards;
+    if (s != null) {
+      // Show the first few ingredients from the real INCI list, using only
+      // scanned facts (name / function / note) — no fabricated benefits.
+      final picks = s.ingredients.take(6).toList();
+      cards = [
+        for (var i = 0; i < picks.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          _KeyIngCard(
+            name:    picks[i].name,
+            fn:      picks[i].function ?? 'Ingredient',
+            benefit: picks[i].note ??
+                'Identified in this product\'s ingredient list.',
+            color:   _palette[i % _palette.length],
+            icon:    Icons.science_rounded,
+          ),
+        ],
+      ];
+    } else {
+      cards = _mockCards;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -751,31 +927,7 @@ class _KeyIngredientsSection extends StatelessWidget {
           height: 148,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            children: const [
-              _KeyIngCard(
-                name:    'Ceramide NP',
-                fn:      'Barrier Repair',
-                benefit: 'Restores and maintains the skin\'s protective lipid barrier after cleansing.',
-                color:   Color(0xFF0EA5E9),
-                icon:    Icons.shield_rounded,
-              ),
-              SizedBox(width: 10),
-              _KeyIngCard(
-                name:    'Hyaluronic Acid',
-                fn:      'Deep Hydration',
-                benefit: 'Draws moisture into the skin for visibly plump and hydrated skin all day.',
-                color:   Color(0xFF22C55E),
-                icon:    Icons.water_drop_rounded,
-              ),
-              SizedBox(width: 10),
-              _KeyIngCard(
-                name:    'Niacinamide',
-                fn:      'Brightening & Pores',
-                benefit: 'Minimises the appearance of pores and visibly evens out skin tone over time.',
-                color:   Color(0xFF8B5CF6),
-                icon:    Icons.brightness_5_rounded,
-              ),
-            ],
+            children: cards,
           ),
         ),
       ],
@@ -786,10 +938,62 @@ class _KeyIngredientsSection extends StatelessWidget {
 // ─── 6 · Flagged ingredients ──────────────────────────────────────────────────
 
 class _FlaggedCard extends StatelessWidget {
-  const _FlaggedCard();
+  final ScannedProduct? scanned;
+  const _FlaggedCard({required this.scanned});
 
   @override
   Widget build(BuildContext context) {
+    final s = scanned;
+
+    final List<ScannedIngredient> flagged = s != null
+        ? s.ingredients
+            .where((i) =>
+                i.safety == IngredientSafety.caution ||
+                i.safety == IngredientSafety.avoid)
+            .toList()
+        : const [];
+
+    // Real scanned product with nothing flagged → hide the card.
+    if (s != null && flagged.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final List<Widget> rows;
+    final int count;
+    if (s != null) {
+      count = flagged.length;
+      rows = [
+        for (var i = 0; i < flagged.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          _FlagRow(
+            name:    flagged[i].name,
+            concern: flagged[i].note ??
+                (flagged[i].safety == IngredientSafety.avoid
+                    ? 'Flagged to avoid based on its safety classification.'
+                    : 'Use with caution based on its safety classification.'),
+            color:   flagged[i].safety == IngredientSafety.avoid
+                ? const Color(0xFFEF4444)
+                : const Color(0xFFF59E0B),
+          ),
+        ],
+      ];
+    } else {
+      count = 2;
+      rows = const [
+        _FlagRow(
+          name:    'Fragrance',
+          concern: 'May cause irritation or sensitisation in sensitive skin types.',
+          color:   Color(0xFFF59E0B),
+        ),
+        SizedBox(height: 8),
+        _FlagRow(
+          name:    'Phenoxyethanol',
+          concern: 'Preservative with mild concern at high concentrations — safe at current level.',
+          color:   Color(0xFFF59E0B),
+        ),
+      ];
+    }
+
     return Container(
       padding:    const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -822,7 +1026,7 @@ class _FlaggedCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '2 items',
+                  '$count items',
                   style: AppTypography.caption.copyWith(
                     color:      const Color(0xFFEF4444),
                     fontWeight: FontWeight.w700,
@@ -833,17 +1037,7 @@ class _FlaggedCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _FlagRow(
-            name:    'Fragrance',
-            concern: 'May cause irritation or sensitisation in sensitive skin types.',
-            color:   const Color(0xFFF59E0B),
-          ),
-          const SizedBox(height: 8),
-          _FlagRow(
-            name:    'Phenoxyethanol',
-            concern: 'Preservative with mild concern at high concentrations — safe at current level.',
-            color:   const Color(0xFFF59E0B),
-          ),
+          ...rows,
         ],
       ),
     );
@@ -853,18 +1047,28 @@ class _FlaggedCard extends StatelessWidget {
 // ─── 7 · Product details ──────────────────────────────────────────────────────
 
 class _ProductDetailsCard extends StatelessWidget {
-  const _ProductDetailsCard();
+  final ScannedProduct? scanned;
+  final String barcode;
+  const _ProductDetailsCard({required this.scanned, required this.barcode});
 
   @override
   Widget build(BuildContext context) {
-    const rows = [
-      ('Brand',     'CeraVe'),
-      ('Category',  'Facial Cleanser'),
-      ('Volume',    '355 ml / 12 fl oz'),
-      ('Skin Type', 'All Skin Types'),
-      ('Free From', 'Fragrance · Parabens · Non-comedogenic'),
-      ('Barcode',   '301872492140'),
-    ];
+    final s = scanned;
+    final List<(String, String)> rows = s != null
+        ? [
+            ('Brand', s.brand),
+            ('Category', s.category),
+            ('Ingredients', '${s.ingredients.length} read'),
+            ('Barcode', s.barcode),
+          ]
+        : [
+            ('Brand',     'CeraVe'),
+            ('Category',  'Facial Cleanser'),
+            ('Volume',    Fmt.volume(ml: 355, flOz: 12)),
+            ('Skin Type', 'All Skin Types'),
+            ('Free From', 'Fragrance · Parabens · Non-comedogenic'),
+            ('Barcode',   '301872492140'),
+          ];
 
     return _Card(
       child: Column(

@@ -1,10 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../core/firebase/repositories/user_repository.dart';
+import '../../../../core/firebase/storage_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
 
@@ -38,12 +43,64 @@ class ProfileScreen extends ConsumerWidget {
     context.go('/login');
   }
 
+  /// Picks a new avatar from the gallery, uploads it to Firebase Storage, and
+  /// persists the resulting URL to `users/{uid}` + the in-session auth state so
+  /// the avatar updates everywhere. Degrades gracefully when Storage/Firebase is
+  /// unavailable (shows a message rather than crashing).
+  Future<void> _changePhoto(BuildContext context, WidgetRef ref) async {
+    final user = ref.read(authStateProvider);
+    if (user == null) return;
+
+    final storage = ref.read(storageServiceProvider);
+    if (!storage.isAvailable) {
+      AppSnackbar.show(context, 'Photo upload needs an internet connection.');
+      return;
+    }
+
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 800,
+      );
+    } catch (_) {
+      if (context.mounted) {
+        AppSnackbar.show(context, 'Could not open the photo library.');
+      }
+      return;
+    }
+    if (picked == null) return;
+
+    if (context.mounted) AppSnackbar.show(context, 'Updating photo…');
+
+    try {
+      final url = await storage.uploadProfilePhoto(user.id, File(picked.path));
+      await ref.read(userRepositoryProvider)?.updateFields(user.id, {
+        'photoUrl': url,
+      });
+      ref.read(authStateProvider.notifier).state = AppUser(
+        id: user.id,
+        displayName: user.displayName,
+        email: user.email,
+        photoUrl: url,
+        isAnonymous: user.isAnonymous,
+      );
+      if (context.mounted) AppSnackbar.success(context, 'Profile photo updated');
+    } catch (_) {
+      if (context.mounted) {
+        AppSnackbar.show(context, 'Could not update photo. Please try again.');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider);
     final name = profile.name;
     final email = profile.email;
     final completion = profile.completionPercent;
+    final photoUrl = profile.photoUrl;
 
     return Scaffold(
       backgroundColor: context.dColors.background,
@@ -93,40 +150,52 @@ class ProfileScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Stack(
-                          children: [
-                            Container(
-                              width: 72, height: 72,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF8B6FEA), Color(0xFFA78BFA)],
-                                ),
-                                border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.3), width: 2),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                                  style: AppTypography.h2.copyWith(color: Colors.white),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 0, bottom: 0,
-                              child: Container(
-                                width: 24, height: 24,
+                        GestureDetector(
+                          onTap: () => _changePhoto(context, ref),
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 72, height: 72,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
                                   shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF8B6FEA), Color(0xFFA78BFA)],
+                                  ),
                                   border: Border.all(
-                                      color: const Color(0xFF3B2D9F), width: 2),
+                                      color: Colors.white.withValues(alpha: 0.3), width: 2),
+                                  image: (photoUrl != null && photoUrl.isNotEmpty)
+                                      ? DecorationImage(
+                                          image: NetworkImage(photoUrl),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
-                                child: const Icon(Icons.camera_alt_rounded,
-                                    size: 11, color: AppColors.primary),
+                                child: (photoUrl != null && photoUrl.isNotEmpty)
+                                    ? null
+                                    : Center(
+                                        child: Text(
+                                          name.isNotEmpty ? name[0].toUpperCase() : 'S',
+                                          style: AppTypography.h2
+                                              .copyWith(color: Colors.white),
+                                        ),
+                                      ),
                               ),
-                            ),
-                          ],
+                              Positioned(
+                                right: 0, bottom: 0,
+                                child: Container(
+                                  width: 24, height: 24,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: const Color(0xFF3B2D9F), width: 2),
+                                  ),
+                                  child: const Icon(Icons.camera_alt_rounded,
+                                      size: 11, color: AppColors.primary),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -155,9 +224,14 @@ class ProfileScreen extends ConsumerWidget {
                                 color: Colors.white.withValues(alpha: 0.75))),
                         const Spacer(),
                         if (completion < 100)
-                          Text('Finish setup →',
-                              style: AppTypography.caption.copyWith(
-                                  color: Colors.white, fontWeight: FontWeight.w600)),
+                          GestureDetector(
+                            onTap: () => context.push('/quiz/skin-type'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Text('Finish setup →',
+                                style: AppTypography.caption.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600)),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),

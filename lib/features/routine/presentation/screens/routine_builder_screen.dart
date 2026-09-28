@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dermiq_colors.dart';
 import '../../data/routine_models.dart';
+import '../../providers/routine_provider.dart';
 
-class RoutineBuilderScreen extends StatefulWidget {
+class RoutineBuilderScreen extends ConsumerStatefulWidget {
   const RoutineBuilderScreen({super.key});
 
   @override
-  State<RoutineBuilderScreen> createState() => _RoutineBuilderScreenState();
+  ConsumerState<RoutineBuilderScreen> createState() => _RoutineBuilderScreenState();
 }
 
-class _RoutineBuilderScreenState extends State<RoutineBuilderScreen>
+class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
   late List<RoutineStep> _amSteps;
@@ -23,8 +25,10 @@ class _RoutineBuilderScreenState extends State<RoutineBuilderScreen>
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
-    _amSteps = List.of(amSteps);
-    _pmSteps = List.of(pmSteps);
+    // Seed the editable lists from the live routine state so prior edits show.
+    final routine = ref.read(routineProvider);
+    _amSteps = List.of(routine.amSteps);
+    _pmSteps = List.of(routine.pmSteps);
     _tab.addListener(() => setState(() {}));
   }
 
@@ -67,6 +71,11 @@ class _RoutineBuilderScreenState extends State<RoutineBuilderScreen>
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    // Persist the edited AM/PM step definitions through the provider.
+    ref.read(routineProvider.notifier).setSteps(
+          am: List.of(_amSteps),
+          pm: List.of(_pmSteps),
+        );
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     setState(() => _saving = false);

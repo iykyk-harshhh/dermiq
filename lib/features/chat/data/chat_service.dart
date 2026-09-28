@@ -40,10 +40,24 @@ class ChatService {
       throw StateError('GEMINI_API_KEY not set');
     }
 
+    // Key goes in the `x-goog-api-key` header, NOT the URL query string, so it
+    // never lands in server/proxy logs, crash reports, or browser history.
     final uri = Uri.parse(
       'https://generativelanguage.googleapis.com/v1beta/models/'
-      '$_kGeminiModel:generateContent?key=$_kGeminiApiKey',
+      '$_kGeminiModel:generateContent',
     );
+
+    // Gemini requires the `contents` array to START with a 'user' turn. The
+    // chat seeds an assistant greeting as the first on-screen message, so drop
+    // any leading assistant/model turns before building the payload — otherwise
+    // the request 400s on the very first send.
+    final firstUser = history.indexWhere((t) => t.role != 'assistant');
+    final trimmed = firstUser == -1
+        ? const <ChatTurn>[]
+        : history.sublist(firstUser);
+    if (trimmed.isEmpty) {
+      throw StateError('No user turn to send');
+    }
 
     final body = {
       'systemInstruction': {
@@ -52,7 +66,7 @@ class ChatService {
         ],
       },
       'contents': [
-        for (final t in history)
+        for (final t in trimmed)
           {
             // Gemini roles are 'user' / 'model'.
             'role': t.role == 'assistant' ? 'model' : 'user',
@@ -70,7 +84,10 @@ class ChatService {
     final res = await _client
         .post(
           uri,
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': _kGeminiApiKey,
+          },
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 25));

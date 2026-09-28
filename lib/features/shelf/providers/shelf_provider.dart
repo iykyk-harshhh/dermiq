@@ -10,6 +10,7 @@ enum ShelfSort { recent, expirySoonest, scoreHighest, nameAZ }
 
 const shelfCategories = [
   'All', 'Cleanser', 'Moisturizer', 'Serum', 'Sunscreen', 'Treatment', 'Toner',
+  'Other',
 ];
 
 /// Owns the user's product shelf plus the active filters. Replaces the
@@ -155,6 +156,32 @@ class ShelfNotifier extends Notifier<ShelfState> {
     state = state.copyWith(products: [product, ...state.products]);
     final uid = _uid;
     if (uid != null) _repo.addToShelf(uid, product);
+  }
+
+  /// Edit the user-owned fields of a shelf product (name, notes, purchase /
+  /// expiry dates). Persists the updated product to Firestore when signed in.
+  void updateProduct(
+    String id, {
+    String? name,
+    String? notes,
+    DateTime? purchaseDate,
+    DateTime? expiryDate,
+  }) {
+    state = state.copyWith(products: [
+      for (final p in state.products)
+        if (p.id == id)
+          p.copyWith(
+            name: name,
+            notes: notes,
+            purchaseDate: purchaseDate,
+            expiryDate: expiryDate,
+          )
+        else
+          p,
+    ]);
+    final uid = _uid;
+    final updated = byId(id);
+    if (uid != null && updated != null) _repo.addToShelf(uid, updated);
   }
 
   void removeProduct(String id) {

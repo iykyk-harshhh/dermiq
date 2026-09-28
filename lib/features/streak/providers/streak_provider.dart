@@ -1,7 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/notification_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../data/streak_models.dart';
+import '../data/streak_repository.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Keys
@@ -23,10 +27,84 @@ const _kRewards = 'streak_rewards';
 class StreakNotifier extends AsyncNotifier<StreakState> {
   late SharedPreferences _prefs;
 
+  StreakRepository get _repo => ref.read(streakRepositoryProvider);
+  String? get _currentUid => ref.read(authStateProvider)?.id;
+
   @override
   Future<StreakState> build() async {
     _prefs = await SharedPreferences.getInstance();
-    return _load();
+    final loaded = await _load();
+    // Offline-first Firestore sync: mirror streak state to
+    // users/{uid}/streakState/current when signed in + online.
+    final uid = ref.watch(authStateProvider)?.id;
+    if (uid != null && _repo.isOnline) {
+      final sub = _repo.watch(uid).listen(
+        (data) => _applyRemote(data),
+        onError: (Object e) => debugPrint('[Streak] watch error: $e'),
+      );
+      ref.onDispose(sub.cancel);
+    }
+    return loaded;
+  }
+
+  /// Serializes the full streak snapshot (state + day-tracking prefs) for
+  /// Firestore backup.
+  Map<String, dynamic> _stateMap(StreakState s) => {
+        'current': s.current,
+        'greenDays': s.greenDays,
+        'best': s.best,
+        'claimedMilestones': s.claimedMilestones,
+        'rewards': s.rewards.map((r) => r.toJson()).toList(),
+        'lastDate': _prefs.getString(_kLastDate),
+        'lastAm': _prefs.getBool(_kLastAmDone) ?? false,
+        'lastPm': _prefs.getBool(_kLastPmDone) ?? false,
+      };
+
+  void _pushRemote() {
+    final uid = _currentUid;
+    final s = state.valueOrNull;
+    if (uid == null || s == null) return;
+    _repo.save(uid, _stateMap(s));
+  }
+
+  Future<void> _applyRemote(Map<String, dynamic>? data) async {
+    if (data == null) {
+      _pushRemote(); // no remote doc yet → back up local
+      return;
+    }
+    try {
+      final current = (data['current'] as num?)?.toInt() ?? 0;
+      final green = (data['greenDays'] as num?)?.toInt() ?? 0;
+      final best = (data['best'] as num?)?.toInt() ?? 0;
+      final claimed = (data['claimedMilestones'] as List?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          <int>[];
+      final rewards = (data['rewards'] as List?)
+              ?.map((e) => RewardGift.fromJson((e as Map).cast<String, dynamic>()))
+              .toList() ??
+          <RewardGift>[];
+      // Reconcile local cache.
+      await _prefs.setInt(_kCurrent, current);
+      await _prefs.setInt(_kGreen, green);
+      await _prefs.setInt(_kBest, best);
+      await _prefs.setString(_kClaimed, jsonEncode(claimed));
+      await _prefs.setString(_kRewards, RewardGift.listToJson(rewards));
+      final lastDate = data['lastDate'] as String?;
+      if (lastDate != null) await _prefs.setString(_kLastDate, lastDate);
+      if (data['lastAm'] is bool) await _prefs.setBool(_kLastAmDone, data['lastAm'] as bool);
+      if (data['lastPm'] is bool) await _prefs.setBool(_kLastPmDone, data['lastPm'] as bool);
+
+      state = AsyncData(StreakState(
+        current: current,
+        greenDays: green,
+        best: best,
+        claimedMilestones: claimed,
+        rewards: _refreshExpiry(rewards),
+      ));
+    } catch (e) {
+      debugPrint('[Streak] applyRemote failed: $e');
+    }
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
@@ -96,7 +174,14 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
   }
 
   void _onRewardUnlocked(int milestone) {
-    // FCM / local notification hook.
+    // Celebratory local notification — FREE, no backend required.
+    NotificationService.instance.showNow(
+      id: 900000 + milestone,
+      title: '🎉 Reward Unlocked!',
+      body: "You've reached ${milestoneName(milestone)} — "
+          '$milestone green days! Tap to claim your reward.',
+      channel: NotificationChannels.general,
+    );
   }
 
   void _onRewardExpired(RewardGift gift) {
@@ -171,6 +256,7 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
       best: best,
       pendingMilestone: hitMilestone,
     ));
+    _pushRemote();
   }
 
   /// User selected a reward option for the [milestone] — store the gift.
@@ -200,6 +286,7 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
       claimedMilestones: newClaimed,
       clearPending: true,
     ));
+    _pushRemote();
   }
 
   /// Dismiss the pending milestone without claiming (rare — skip).
@@ -218,6 +305,7 @@ class StreakNotifier extends AsyncNotifier<StreakState> {
         .toList();
     await _prefs.setString(_kRewards, RewardGift.listToJson(updated));
     state = AsyncData(s.copyWith(rewards: updated));
+    _pushRemote();
   }
 }
 

@@ -22,6 +22,14 @@ List<Coupon> activeRewardCoupons(StreakState? streak) {
   return out;
 }
 
+/// Outcome of [CartNotifier.applyCoupon]: [ok] plus an [error] reason when
+/// the coupon was rejected (null on success).
+class CouponResult {
+  final bool ok;
+  final String? error;
+  const CouponResult(this.ok, this.error);
+}
+
 class CartState {
   final List<CartItem> items;
   final Coupon? appliedCoupon;
@@ -32,7 +40,13 @@ class CartState {
   double get deliveryCharge => subtotal > 999 ? 0.0 : 99.0; // free above ₹999
   double get discountAmount =>
       appliedCoupon != null ? subtotal * appliedCoupon!.discountPct / 100 : 0.0;
-  double get total => subtotal + deliveryCharge - discountAmount;
+
+  /// Order total after discount. Clamped to `>= 0` so a large discount (e.g. a
+  /// reward coupon) can never produce a negative payable amount.
+  double get total {
+    final t = subtotal + deliveryCharge - discountAmount;
+    return t < 0 ? 0.0 : t;
+  }
   int get itemCount => items.fold(0, (s, i) => s + i.quantity);
   bool get isEmpty => items.isEmpty;
 
@@ -49,6 +63,9 @@ class CartState {
 }
 
 class CartNotifier extends Notifier<CartState> {
+  /// Per-item quantity cap. A single line item can never exceed this many units.
+  static const int maxQtyPerItem = 10;
+
   @override
   CartState build() => CartState(items: _loadItems());
 
@@ -77,9 +94,10 @@ class CartNotifier extends Notifier<CartState> {
     final existing =
         state.items.indexWhere((i) => i.product.id == product.id);
     if (existing >= 0) {
+      final current = state.items[existing].quantity;
+      if (current >= maxQtyPerItem) return; // already at the cap — no-op
       final updated = List<CartItem>.from(state.items);
-      updated[existing] =
-          updated[existing].copyWith(quantity: updated[existing].quantity + 1);
+      updated[existing] = updated[existing].copyWith(quantity: current + 1);
       state = state.copyWith(items: updated);
     } else {
       state = state.copyWith(
@@ -100,15 +118,26 @@ class CartNotifier extends Notifier<CartState> {
       removeItem(productId);
       return;
     }
+    final capped = qty > maxQtyPerItem ? maxQtyPerItem : qty;
     final updated = state.items
         .map((i) =>
-            i.product.id == productId ? i.copyWith(quantity: qty) : i)
+            i.product.id == productId ? i.copyWith(quantity: capped) : i)
         .toList();
     state = state.copyWith(items: updated);
     _persist();
   }
 
-  bool applyCoupon(String code) {
+  /// Applies a coupon code to the cart.
+  ///
+  /// Returns a result carrying success plus a human-readable reason on failure:
+  /// - empty cart → rejected
+  /// - unknown code → rejected
+  /// - expired coupon → rejected (and never applied)
+  /// - subtotal below the coupon's minimum order → rejected
+  CouponResult applyCoupon(String code) {
+    if (state.isEmpty) {
+      return const CouponResult(false, 'Add items to your cart first');
+    }
     final up = code.toUpperCase();
     var coupon =
         availableCoupons.where((c) => c.code.toUpperCase() == up).firstOrNull;
@@ -116,9 +145,18 @@ class CartNotifier extends Notifier<CartState> {
     coupon ??= activeRewardCoupons(ref.read(streakProvider).valueOrNull)
         .where((c) => c.code.toUpperCase() == up)
         .firstOrNull;
-    if (coupon == null) return false;
+    if (coupon == null) {
+      return const CouponResult(false, 'Invalid coupon code');
+    }
+    if (coupon.isExpired) {
+      return const CouponResult(false, 'This coupon has expired');
+    }
+    if (!coupon.meetsMinOrder(state.subtotal)) {
+      return CouponResult(false,
+          'Minimum order of ₹${coupon.minOrder.toStringAsFixed(0)} required');
+    }
     state = state.copyWith(appliedCoupon: coupon);
-    return true;
+    return const CouponResult(true, null);
   }
 
   void removeCoupon() => state = state.copyWith(clearCoupon: true);

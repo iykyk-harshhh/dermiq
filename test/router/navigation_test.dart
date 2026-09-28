@@ -17,7 +17,6 @@ void main() {
     test('classification helpers', () {
       expect(AppRoutes.isSplash(AppRoutes.splash), isTrue);
       expect(AppRoutes.isSplash(AppRoutes.home), isFalse);
-      expect(AppRoutes.isPreAuth(AppRoutes.welcome), isTrue);
       expect(AppRoutes.isPreAuth(AppRoutes.login), isTrue);
       expect(AppRoutes.isPreAuth(AppRoutes.home), isFalse);
     });
